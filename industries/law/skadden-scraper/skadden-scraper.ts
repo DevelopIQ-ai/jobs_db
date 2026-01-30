@@ -117,12 +117,12 @@ async function collectLawyersForLetter(page: Page, letter: string): Promise<Lawy
   const seenUrls = new Set<string>();
   const lawyers: LawyerListItem[] = [];
   let skip = 0;
-  const pageSize = 5; // Each page shows 5 results
+  const pageSize = 5;
+  let consecutiveEmpty = 0;
 
   console.log(`\n--- Collecting lawyers for letter: ${letter} ---`);
 
-  while (true) {
-    // Navigate to the page with skip parameter
+  while (consecutiveEmpty < 3) { // Try a few more pages before giving up
     const url = `${PROFESSIONALS_URL}?skip=${skip}&letter=${letter.toLowerCase()}&hassearched=true`;
     await page.goto(url, {
       waitUntil: 'networkidle',
@@ -130,60 +130,64 @@ async function collectLawyersForLetter(page: Page, letter: string): Promise<Lawy
     });
 
     await dismissCookieDialog(page);
-    await delay(1500);
+    await delay(1000);
 
-    // Wait for results to appear
+    // Wait for results
     try {
-      await page.waitForSelector(`a[href*="/professionals/${letter.toLowerCase()}/"]`, { timeout: 15000 });
+      await page.waitForSelector(`a[href*="/professionals/${letter.toLowerCase()}/"]`, { timeout: 10000 });
     } catch {
-      if (skip === 0) {
-        console.log(`  No results found for letter ${letter}`);
-      }
-      break; // No more results
+      consecutiveEmpty++;
+      skip += pageSize;
+      continue;
     }
 
-    // Extract profile links from this page
+    // Get ALL links on the page matching the pattern
     const profileLinks = await page.locator(`a[href*="/professionals/${letter.toLowerCase()}/"]`).all();
     let newLinksFound = 0;
 
     for (const link of profileLinks) {
       try {
         const href = await link.getAttribute('href');
-        // Match pattern like /professionals/a/adams-nicholas
-        if (href && href.match(/\/professionals\/[a-z]\/[\w-]+$/)) {
-          // Skip if already seen
-          if (seenUrls.has(href)) continue;
+        if (!href || !href.match(/\/professionals\/[a-z]\/[\w-]+$/)) continue;
+        if (seenUrls.has(href)) continue;
 
-          const name = await link.textContent() || '';
+        // Get just the name (first non-empty line of text content)
+        const fullText = await link.textContent() || '';
+        const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const name = lines[0] || '';
 
-          // Only add if we have a valid name (skip image links with empty text)
-          if (name.trim() && name.trim().length > 1 && !['Home', 'Professionals'].includes(name.trim())) {
-            seenUrls.add(href); // Only mark as seen when we have valid data
-            lawyers.push({
-              name: name.trim(),
-              profileUrl: `${BASE_URL}${href}`,
-              position: '',
-              office: '',
-              email: null,
-              phone: null
-            });
-            newLinksFound++;
-          }
-        }
+        // Validate name
+        if (name.length < 3) continue;
+        if (['Home', 'Professionals', 'Skip to main content'].includes(name)) continue;
+
+        seenUrls.add(href);
+        lawyers.push({
+          name: name,
+          profileUrl: `${BASE_URL}${href}`,
+          position: '',
+          office: '',
+          email: null,
+          phone: null
+        });
+        newLinksFound++;
       } catch {
         // Skip problematic links
       }
     }
 
-    console.log(`  Page ${skip / pageSize + 1}: found ${newLinksFound} new lawyers (total: ${lawyers.length})`);
+    console.log(`  Skip ${skip}: found ${newLinksFound} new (total: ${lawyers.length})`);
 
-    // If no new links found, we've reached the end
     if (newLinksFound === 0) {
-      break;
+      consecutiveEmpty++;
+    } else {
+      consecutiveEmpty = 0;
     }
 
     skip += pageSize;
-    await delay(500); // Small delay between pages
+    await delay(300);
+
+    // Safety limit
+    if (skip > 2000) break;
   }
 
   console.log(`  Total for letter ${letter}: ${lawyers.length} lawyers`);

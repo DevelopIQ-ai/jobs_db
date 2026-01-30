@@ -1,0 +1,11 @@
+{
+  "name": "ncua-scraper",
+  "version": "1.0.0",
+  "description": "Scraper for NCUA credit union data",
+  "scripts": {
+    "scrape": "npx tsx ncua-scraper.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.21.0"
+  }
+}

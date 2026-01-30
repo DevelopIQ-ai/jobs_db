@@ -1,0 +1,12 @@
+{
+  "name": "executive-scraper",
+  "version": "1.0.0",
+  "description": "Scrapes executive/leadership info from bank websites",
+  "scripts": {
+    "scrape": "npx tsx executive-scraper.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.58.0",
+    "tsx": "^4.21.0"
+  }
+}

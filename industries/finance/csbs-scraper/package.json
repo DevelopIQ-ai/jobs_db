@@ -1,0 +1,6 @@
+{
+  "name": "csbs-scraper",
+  "version": "1.0.0",
+  "description": "State banking regulators data from CSBS",
+  "notes": "Data extracted from https://www.csbs.org/contact-your-state-bank-agency"
+}
