@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+body {
+  background: #F6F6F6;
+  color: #1a1a1a;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.hand {
+  font-family: var(--font-hand), cursive;
+}

@@ -1,0 +1,13 @@
+{
+  "name": "capboard-scraper",
+  "version": "1.0.0",
+  "description": "Scraper for Capboard.io investor directory - VCs, angels, check sizes, stages",
+  "scripts": {
+    "scrape": "npx tsx capboard-scraper.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.58.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
