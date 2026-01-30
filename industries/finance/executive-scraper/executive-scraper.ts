@@ -1,4 +1,4 @@
-import { chromium, Browser, Page } from "playwright";
+import { chromium, Page } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -27,75 +27,40 @@ interface Executive {
   sourceUrl: string;
 }
 
-// Common leadership page URL patterns
 const LEADERSHIP_PATHS = [
-  "/about/leadership",
-  "/about-us/leadership",
-  "/about/our-team",
-  "/about-us/our-team",
-  "/about/management",
-  "/about-us/management",
-  "/leadership",
-  "/our-team",
-  "/management",
-  "/about/executive-team",
-  "/about-us/executive-team",
-  "/executive-team",
-  "/about/board",
-  "/about-us/board",
-  "/board-of-directors",
-  "/about/officers",
-  "/officers",
-  "/about",
-  "/about-us",
+  "/about/leadership", "/about-us/leadership", "/leadership",
+  "/about/our-team", "/our-team", "/management",
+  "/about/executive-team", "/executive-team", "/about/board",
+  "/board-of-directors", "/about/officers", "/officers",
+  "/team", "/about", "/about-us",
 ];
 
-// Target titles we're looking for
 const TARGET_TITLES = [
-  "ceo", "chief executive",
-  "president",
-  "cto", "chief technology",
-  "cio", "chief information",
-  "chief digital", "chief innovation",
-  "cfo", "chief financial",
-  "coo", "chief operating",
-  "chief compliance", "compliance officer",
-  "vice president", "vp",
-  "svp", "senior vice president",
-  "evp", "executive vice president",
-  "managing director",
-  "chairman", "board",
+  "ceo", "chief executive", "president", "cfo", "coo", "cto", "cio",
+  "vice president", "vp", "svp", "evp", "chairman", "director",
+  "officer", "treasurer", "secretary", "chief"
 ];
 
 function parseCSV(content: string): Bank[] {
   const lines = content.split("\n").filter(l => l.trim());
   const headers = lines[0].split(",");
-
   const certIdx = headers.findIndex(h => h.includes("CERT"));
   const nameIdx = headers.findIndex(h => h === "Name");
   const websiteIdx = headers.findIndex(h => h === "Website");
   const cityIdx = headers.findIndex(h => h === "City");
-  const stateIdx = headers.findIndex(h => h.includes("State Code") || h === "State Code");
+  const stateIdx = headers.findIndex(h => h.includes("State Code"));
   const assetsIdx = headers.findIndex(h => h.includes("formatted"));
   const employeeIdx = headers.findIndex(h => h.includes("Employee"));
 
   const banks: Bank[] = [];
-
   for (let i = 1; i < lines.length; i++) {
-    // Simple CSV parse (handles basic cases)
     const values: string[] = [];
     let current = "";
     let inQuotes = false;
-
     for (const char of lines[i]) {
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        values.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
+      if (char === '"') inQuotes = !inQuotes;
+      else if (char === "," && !inQuotes) { values.push(current.trim()); current = ""; }
+      else current += char;
     }
     values.push(current.trim());
 
@@ -112,147 +77,146 @@ function parseCSV(content: string): Bank[] {
       employeeCount: values[employeeIdx] || "",
     });
   }
-
   return banks;
 }
 
-async function findLeadershipPage(page: Page, baseUrl: string): Promise<string | null> {
-  // First try common paths
-  for (const path of LEADERSHIP_PATHS) {
+async function findLeadershipPages(page: Page, baseUrl: string): Promise<string[]> {
+  const foundPages: string[] = [];
+
+  for (const pathStr of LEADERSHIP_PATHS) {
+    if (foundPages.length >= 2) break;
     try {
-      const url = new URL(path, baseUrl).href;
-      const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 10000 });
+      const url = new URL(pathStr, baseUrl).href;
+      const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 8000 });
       if (response && response.ok()) {
         const content = await page.content();
-        // Check if page has leadership-related content
-        if (content.toLowerCase().includes("president") ||
-            content.toLowerCase().includes("ceo") ||
-            content.toLowerCase().includes("executive") ||
-            content.toLowerCase().includes("officer")) {
-          return url;
+        const lower = content.toLowerCase();
+        if (lower.includes("president") || lower.includes("ceo") ||
+            lower.includes("executive") || lower.includes("officer") ||
+            lower.includes("chairman") || lower.includes("director")) {
+          foundPages.push(url);
         }
       }
-    } catch {
-      continue;
-    }
+    } catch { continue; }
   }
 
-  // Try finding links on homepage
-  try {
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
-
-    const leadershipLink = await page.evaluate(() => {
-      const links = Array.from(document.querySelectorAll("a"));
-      const keywords = ["leadership", "team", "about", "management", "executive", "officer", "board"];
-
-      for (const link of links) {
-        const text = (link.textContent || "").toLowerCase();
-        const href = link.href || "";
-
-        for (const kw of keywords) {
-          if (text.includes(kw) || href.includes(kw)) {
-            return href;
+  if (foundPages.length === 0) {
+    try {
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
+      const links = await page.$$eval("a", (anchors) => {
+        const keywords = ["leadership", "team", "management", "executive", "board", "about"];
+        const found: string[] = [];
+        for (const a of anchors) {
+          const text = (a.textContent || "").toLowerCase();
+          const href = a.href || "";
+          for (const kw of keywords) {
+            if ((text.includes(kw) || href.toLowerCase().includes(kw)) && href.startsWith("http")) {
+              if (!found.includes(href)) found.push(href);
+              break;
+            }
           }
+          if (found.length >= 3) break;
         }
-      }
-      return null;
-    });
-
-    if (leadershipLink) {
-      return leadershipLink;
-    }
-  } catch {
-    // ignore
+        return found;
+      });
+      foundPages.push(...links);
+    } catch { }
   }
 
-  return null;
+  return foundPages;
 }
 
-async function extractExecutives(page: Page, url: string): Promise<Array<{name: string, title: string}>> {
-  const executives: Array<{name: string, title: string}> = [];
+// Extraction script as a string to bypass TypeScript transformation
+const EXTRACT_SCRIPT = `
+(function(targetTitles) {
+  var found = [];
 
+  function checkName(text) {
+    var t = text.trim();
+    if (t.length < 4 || t.length > 60) return false;
+    if (/\\d/.test(t)) return false;
+    var words = t.split(/\\s+/);
+    if (words.length < 2 || words.length > 6) return false;
+    if (!/^[A-Z]/.test(words[0])) return false;
+    var lower = t.toLowerCase();
+    if (lower.includes("bank") || lower.includes("trust") || lower.includes("financial")) return false;
+    if (lower.includes("click") || lower.includes("learn") || lower.includes("read")) return false;
+    if (lower.includes("@") || lower.includes("www") || lower.includes(".com")) return false;
+    return true;
+  }
+
+  function checkTitle(text) {
+    var lower = text.toLowerCase();
+    for (var i = 0; i < targetTitles.length; i++) {
+      if (lower.includes(targetTitles[i])) return true;
+    }
+    return false;
+  }
+
+  var textContent = document.body.innerText;
+  var rawLines = textContent.split("\\n");
+  var lines = [];
+  for (var i = 0; i < rawLines.length; i++) {
+    var line = rawLines[i].trim();
+    if (line && line.length > 2 && line.length < 150) lines.push(line);
+  }
+
+  // Method 1: Name then title on next line
+  for (var i = 0; i < lines.length - 1; i++) {
+    if (checkName(lines[i]) && checkTitle(lines[i + 1])) {
+      found.push({ name: lines[i], title: lines[i + 1] });
+    }
+  }
+
+  // Method 2: Name, Title on same line
+  var separators = [", ", " - ", " | "];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    for (var s = 0; s < separators.length; s++) {
+      var idx = line.indexOf(separators[s]);
+      if (idx > 3 && idx < line.length - 5) {
+        var before = line.substring(0, idx).trim();
+        var after = line.substring(idx + separators[s].length).trim();
+        if (checkName(before) && checkTitle(after)) {
+          found.push({ name: before, title: after });
+          break;
+        }
+      }
+    }
+  }
+
+  // Deduplicate
+  var seen = {};
+  var result = [];
+  for (var i = 0; i < found.length; i++) {
+    var key = found[i].name.toLowerCase().replace(/[^a-z]/g, "");
+    if (!seen[key] && key.length >= 4) {
+      seen[key] = true;
+      result.push(found[i]);
+    }
+  }
+
+  return result;
+})
+`;
+
+async function extractExecutives(page: Page, url: string): Promise<Array<{name: string, title: string}>> {
   try {
     await page.goto(url, { waitUntil: "networkidle", timeout: 15000 });
 
-    const results = await page.evaluate((targetTitles) => {
-      const found: Array<{name: string, title: string}> = [];
+    // Inject the extraction script
+    await page.addScriptTag({ content: `window.extractExecs = ${EXTRACT_SCRIPT};` });
 
-      // Look for common patterns: name followed by title, or structured elements
-      const textContent = document.body.innerText;
-      const lines = textContent.split("\n").map(l => l.trim()).filter(l => l);
-
-      // Pattern 1: Look for title keywords and nearby names
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].toLowerCase();
-        const isTitle = targetTitles.some(t => line.includes(t));
-
-        if (isTitle && lines[i].length < 100) {
-          // Check if this line has both name and title
-          const fullLine = lines[i];
-
-          // Pattern: "John Smith, CEO" or "John Smith - President"
-          const commaMatch = fullLine.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)[,\-–]\s*(.+)$/);
-          if (commaMatch) {
-            found.push({ name: commaMatch[1].trim(), title: commaMatch[2].trim() });
-            continue;
-          }
-
-          // Check previous line for name
-          if (i > 0 && lines[i-1].length < 50) {
-            const prevLine = lines[i-1];
-            // Check if prev line looks like a name (2-4 capitalized words)
-            if (/^[A-Z][a-z]+(\s+[A-Z]\.?)?(\s+[A-Z][a-z]+)+$/.test(prevLine)) {
-              found.push({ name: prevLine, title: fullLine });
-            }
-          }
-        }
-      }
-
-      // Pattern 2: Look for structured elements (cards, divs with specific classes)
-      const cards = document.querySelectorAll('[class*="team"], [class*="leader"], [class*="executive"], [class*="staff"], [class*="bio"], [class*="member"]');
-      cards.forEach(card => {
-        const text = card.textContent || "";
-        const headings = card.querySelectorAll("h2, h3, h4, h5, strong, b");
-        const paragraphs = card.querySelectorAll("p, span, div");
-
-        let name = "";
-        let title = "";
-
-        headings.forEach(h => {
-          const t = (h.textContent || "").trim();
-          if (t.length < 50 && /^[A-Z][a-z]+/.test(t) && !targetTitles.some(tt => t.toLowerCase().includes(tt))) {
-            name = t;
-          }
-        });
-
-        paragraphs.forEach(p => {
-          const t = (p.textContent || "").trim();
-          if (t.length < 80 && targetTitles.some(tt => t.toLowerCase().includes(tt))) {
-            title = t;
-          }
-        });
-
-        if (name && title) {
-          found.push({ name, title });
-        }
-      });
-
-      // Deduplicate
-      const seen = new Set<string>();
-      return found.filter(e => {
-        const key = `${e.name}|${e.title}`.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+    // Call the injected function
+    const results = await page.evaluate((titles) => {
+      return (window as any).extractExecs(titles);
     }, TARGET_TITLES);
 
-    executives.push(...results);
-  } catch (error) {
-    // ignore extraction errors
+    return results as Array<{name: string, title: string}>;
+  } catch (err) {
+    console.log(`    Extraction error: ${err}`);
+    return [];
   }
-
-  return executives;
 }
 
 function escapeCSV(value: string): string {
@@ -263,138 +227,139 @@ function escapeCSV(value: string): string {
 }
 
 async function main() {
-  console.log("=== Bank Executive Scraper ===\n");
+  console.log("=== Bank Executive Scraper v4 ===\n");
 
-  // Ensure output directory exists
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  // Read FDIC data
   console.log("Reading FDIC bank data...");
-  if (!fs.existsSync(FDIC_CSV)) {
-    console.error(`FDIC CSV not found at: ${FDIC_CSV}`);
-    process.exit(1);
-  }
+  if (!fs.existsSync(FDIC_CSV)) { console.error("FDIC CSV not found"); process.exit(1); }
 
   const csvContent = fs.readFileSync(FDIC_CSV, "utf-8");
   const allBanks = parseCSV(csvContent);
 
-  // Filter to banks with websites and under $5B (small banks)
   const banks = allBanks.filter(b => {
     const assets = b.totalAssets;
-    // Keep banks under $5B
     if (assets.includes("B")) {
       const num = parseFloat(assets.replace(/[$B]/g, ""));
       return num < 5;
     }
-    return true; // Keep all M and K sized banks
+    return true;
   });
 
-  console.log(`Found ${banks.length} small banks with websites\n`);
+  console.log(`Found ${banks.length} small banks\n`);
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
+  const page = await browser.newContext({
     userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-  });
-  const page = await context.newPage();
+  }).then(ctx => ctx.newPage());
 
-  const allExecutives: Executive[] = [];
+  let allExecutives: Executive[] = [];
   let processed = 0;
   let withExecs = 0;
+  let startIndex = 0;
 
-  // Process banks (limit for initial run)
-  const BATCH_SIZE = 100; // Process first 100 banks
-  const banksToProcess = banks.slice(0, BATCH_SIZE);
+  const progressPath = path.join(OUTPUT_DIR, "scrape-progress-v4.json");
+  const csvPath = path.join(OUTPUT_DIR, "bank-executives-v4.csv");
+
+  if (fs.existsSync(progressPath)) {
+    try {
+      const progress = JSON.parse(fs.readFileSync(progressPath, "utf-8"));
+      startIndex = progress.processed || 0;
+      withExecs = progress.withExecs || 0;
+      console.log(`Resuming from bank ${startIndex}...`);
+
+      if (fs.existsSync(csvPath)) {
+        const existingCsv = fs.readFileSync(csvPath, "utf-8");
+        const lines = existingCsv.split("\n").slice(1).filter(l => l.trim());
+        for (const line of lines) {
+          const values: string[] = [];
+          let current = "";
+          let inQuotes = false;
+          for (const char of line) {
+            if (char === '"') inQuotes = !inQuotes;
+            else if (char === "," && !inQuotes) { values.push(current); current = ""; }
+            else current += char;
+          }
+          values.push(current);
+          if (values.length >= 9) {
+            allExecutives.push({
+              bankCert: values[0], bankName: values[1], bankWebsite: values[2],
+              bankCity: values[3], bankState: values[4], bankAssets: values[5],
+              executiveName: values[6], executiveTitle: values[7], sourceUrl: values[8],
+            });
+          }
+        }
+        console.log(`Loaded ${allExecutives.length} existing executives`);
+      }
+    } catch { console.log("Starting fresh"); }
+  }
+
+  const banksToProcess = banks.slice(startIndex);
+  processed = startIndex;
 
   for (const bank of banksToProcess) {
     processed++;
-    console.log(`[${processed}/${banksToProcess.length}] ${bank.name}...`);
+    console.log(`[${processed}/${banks.length}] ${bank.name}...`);
 
     try {
-      // Find leadership page
-      const leadershipUrl = await findLeadershipPage(page, bank.website);
+      const leadershipUrls = await findLeadershipPages(page, bank.website);
+      let bankExecutives: Array<{name: string, title: string}> = [];
+      const seenNames = new Set<string>();
 
-      if (leadershipUrl) {
-        // Extract executives
-        const executives = await extractExecutives(page, leadershipUrl);
-
-        if (executives.length > 0) {
-          withExecs++;
-          console.log(`  Found ${executives.length} executives`);
-
-          for (const exec of executives) {
-            allExecutives.push({
-              bankCert: bank.cert,
-              bankName: bank.name,
-              bankWebsite: bank.website,
-              bankCity: bank.city,
-              bankState: bank.state,
-              bankAssets: bank.totalAssets,
-              executiveName: exec.name,
-              executiveTitle: exec.title,
-              sourceUrl: leadershipUrl,
-            });
+      for (const url of leadershipUrls) {
+        const execs = await extractExecutives(page, url);
+        for (const e of execs) {
+          const key = e.name.toLowerCase().replace(/[^a-z]/g, "");
+          if (!seenNames.has(key)) {
+            seenNames.add(key);
+            bankExecutives.push(e);
           }
-        } else {
-          console.log(`  No executives found`);
+        }
+      }
+
+      if (bankExecutives.length > 0) {
+        withExecs++;
+        console.log(`  Found ${bankExecutives.length} executives`);
+        for (const exec of bankExecutives) {
+          allExecutives.push({
+            bankCert: bank.cert, bankName: bank.name, bankWebsite: bank.website,
+            bankCity: bank.city, bankState: bank.state, bankAssets: bank.totalAssets,
+            executiveName: exec.name, executiveTitle: exec.title,
+            sourceUrl: leadershipUrls[0] || bank.website,
+          });
         }
       } else {
-        console.log(`  No leadership page found`);
+        console.log(`  No executives found`);
       }
     } catch (error) {
       console.log(`  Error: ${error}`);
     }
 
-    // Save progress every 20 banks
-    if (processed % 20 === 0) {
-      const progressPath = path.join(OUTPUT_DIR, "scrape-progress.json");
-      fs.writeFileSync(progressPath, JSON.stringify({
-        processed,
-        withExecs,
-        totalExecutives: allExecutives.length
-      }));
+    if (processed % 10 === 0) {
+      fs.writeFileSync(progressPath, JSON.stringify({ processed, withExecs, totalExecutives: allExecutives.length }));
+      const headers = ["Bank CERT", "Bank Name", "Bank Website", "Bank City", "Bank State", "Bank Assets", "Executive Name", "Executive Title", "Source URL"];
+      const rows = [headers.join(",")];
+      for (const e of allExecutives) {
+        rows.push([escapeCSV(e.bankCert), escapeCSV(e.bankName), escapeCSV(e.bankWebsite), escapeCSV(e.bankCity), escapeCSV(e.bankState), escapeCSV(e.bankAssets), escapeCSV(e.executiveName), escapeCSV(e.executiveTitle), escapeCSV(e.sourceUrl)].join(","));
+      }
+      fs.writeFileSync(csvPath, rows.join("\n"));
     }
   }
 
   await browser.close();
 
-  // Generate CSV
-  const headers = [
-    "Bank CERT",
-    "Bank Name",
-    "Bank Website",
-    "Bank City",
-    "Bank State",
-    "Bank Assets",
-    "Executive Name",
-    "Executive Title",
-    "Source URL",
-  ];
-
-  const csvRows = [headers.join(",")];
-  for (const exec of allExecutives) {
-    csvRows.push([
-      escapeCSV(exec.bankCert),
-      escapeCSV(exec.bankName),
-      escapeCSV(exec.bankWebsite),
-      escapeCSV(exec.bankCity),
-      escapeCSV(exec.bankState),
-      escapeCSV(exec.bankAssets),
-      escapeCSV(exec.executiveName),
-      escapeCSV(exec.executiveTitle),
-      escapeCSV(exec.sourceUrl),
-    ].join(","));
+  const headers = ["Bank CERT", "Bank Name", "Bank Website", "Bank City", "Bank State", "Bank Assets", "Executive Name", "Executive Title", "Source URL"];
+  const rows = [headers.join(",")];
+  for (const e of allExecutives) {
+    rows.push([escapeCSV(e.bankCert), escapeCSV(e.bankName), escapeCSV(e.bankWebsite), escapeCSV(e.bankCity), escapeCSV(e.bankState), escapeCSV(e.bankAssets), escapeCSV(e.executiveName), escapeCSV(e.executiveTitle), escapeCSV(e.sourceUrl)].join(","));
   }
-
-  const csvPath = path.join(OUTPUT_DIR, "bank-executives.csv");
-  fs.writeFileSync(csvPath, csvRows.join("\n"));
+  fs.writeFileSync(csvPath, rows.join("\n"));
 
   console.log("\n=== Summary ===");
   console.log(`Banks processed: ${processed}`);
-  console.log(`Banks with executives found: ${withExecs}`);
-  console.log(`Total executives extracted: ${allExecutives.length}`);
-  console.log(`\nCSV saved to: ${csvPath}`);
+  console.log(`Banks with executives: ${withExecs}`);
+  console.log(`Total executives: ${allExecutives.length}`);
+  console.log(`CSV: ${csvPath}`);
 }
 
 main().catch(console.error);
