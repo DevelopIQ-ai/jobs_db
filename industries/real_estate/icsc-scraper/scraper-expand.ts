@@ -56,8 +56,8 @@ const OUTPUT_DIR = path.join(__dirname, 'output');
 const PROGRESS_FILE = path.join(OUTPUT_DIR, 'expand-scrape-progress.json');
 const EXISTING_FILE = path.join(OUTPUT_DIR, 'icsc-members-full-2026-01-30.json');
 
-// Target: get ~3000 new members
-const TARGET_NEW_MEMBERS = 3000;
+// Target: get ~6000 new members (increased from 3000)
+const TARGET_NEW_MEMBERS = 6000;
 
 // All US States + DC + some international
 const REGIONS = [
