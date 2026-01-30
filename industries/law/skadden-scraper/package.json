@@ -1,0 +1,11 @@
+{
+  "name": "skadden-scraper",
+  "version": "1.0.0",
+  "description": "Scraper for Skadden law firm professionals directory",
+  "scripts": {
+    "scrape": "npx tsx skadden-scraper.ts",
+    "test": "npx tsx test-scraper.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

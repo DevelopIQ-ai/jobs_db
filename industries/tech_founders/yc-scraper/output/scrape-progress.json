@@ -1,0 +1,485 @@
+{
+  "lastBatch": null,
+  "companiesScraped": 10,
+  "companies": [
+    {
+      "name": "Tsenta",
+      "slug": "tsenta",
+      "profileUrl": "https://www.ycombinator.com/companies/tsenta",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/5670afa2f39d71d15be15ed4c56ae5e0a65dbea4.png",
+      "batch": "S26",
+      "status": "Active",
+      "oneLiner": "AI-Native, On-Device Job Automation",
+      "longDescription": "Tsenta is a desktop app that matches you with jobs, optimizes your profile & applies on your behalf. It runs on your device, so you have granular control over every application being submitted in real-time.\n\nWe built Tsenta after applying to over 3,000 jobs manually, so that nobody else would have to.\n\nCheck us out at https://tsenta.com :)",
+      "industries": [
+        "Consumer",
+        "Job and Career Services"
+      ],
+      "tags": [],
+      "teamSize": "2",
+      "founders": [
+        {
+          "name": "Pulkit Gupta",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/pulkitgupta712/",
+          "twitter": null
+        },
+        {
+          "name": "Agnay Srivastava",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/agnay",
+          "twitter": null
+        },
+        {
+          "name": "Jared Friedman",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "",
+      "regions": [],
+      "website": "https://tsenta.com",
+      "linkedIn": "https://www.linkedin.com/company/tsenta/",
+      "twitter": "https://x.com/pulkit_gupta2",
+      "scrapedAt": "2026-01-30T01:44:58.854Z"
+    },
+    {
+      "name": "Martini",
+      "slug": "martini",
+      "profileUrl": "https://www.ycombinator.com/companies/martini",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/6c61a438eef6d3a1fe29d67dd180ddaaac257b9d.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "Collaborative AI-native filmmaking for professionals",
+      "longDescription": "Martini is a collaborative, AI-native platform for professional filmmaking in the era of generative media.\nBy integrating the best generative models into professional workflows, we enable world-class creatives to harness generative AI as a legitimate medium for film.",
+      "industries": [
+        "B2B",
+        "Engineering, Product and Design"
+      ],
+      "tags": [],
+      "teamSize": "2",
+      "founders": [
+        {
+          "name": "Koh Terai",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/kohterai/",
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "Jared Friedman",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://martini.film",
+      "linkedIn": "https://www.linkedin.com/company/martini-film/",
+      "twitter": "https://x.com/koh_terai",
+      "scrapedAt": "2026-01-30T01:45:03.846Z"
+    },
+    {
+      "name": "Shofo",
+      "slug": "shofo",
+      "profileUrl": "https://www.ycombinator.com/companies/shofo",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/cdc8fbfe28cb5c8e4405b92f33ce7b6536b88c17.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "Common Crawl for Videos",
+      "longDescription": "Shofo builds large-scale social media training datasets by collecting, labeling, and enriching public content for pre-training and fine-tuning AI models. Our indexes continuously collect and update every post across hard to access social media platforms. Companies use Shofo to avoid building their own data collection and processing systems and spending months turning unstructured social content into model-ready data. We started with TikTok and are expanding across every major social platform.",
+      "industries": [
+        "B2B",
+        "Infrastructure"
+      ],
+      "tags": [],
+      "teamSize": "4",
+      "founders": [
+        {
+          "name": "Bryan Hong",
+          "title": "Founder & CEO",
+          "linkedIn": "https://www.linkedin.com/in/zixihong",
+          "twitter": null
+        },
+        {
+          "name": "Andre Braga",
+          "title": "Founder & Head of AI",
+          "linkedIn": "https://www.linkedin.com/in/andre-braga-ucsb",
+          "twitter": null
+        },
+        {
+          "name": "Braiden Dishman",
+          "title": "Founder & COO",
+          "linkedIn": "https://www.linkedin.com/in/braiden-dishman/",
+          "twitter": null
+        },
+        {
+          "name": "Alexzendor Misra",
+          "title": "Founder & CTO",
+          "linkedIn": "https://www.linkedin.com/in/alexzendor-misra-15907a23b/",
+          "twitter": null
+        },
+        {
+          "name": "Company Launches",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "Jared Friedman",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://shofo.ai/",
+      "linkedIn": "https://www.linkedin.com/company/shofoai",
+      "twitter": "https://x.com/zixihong_",
+      "scrapedAt": "2026-01-30T01:45:09.854Z"
+    },
+    {
+      "name": "Aurorin CAD",
+      "slug": "aurorin-cad",
+      "profileUrl": "https://www.ycombinator.com/companies/aurorin-cad",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/f33a496f7311dedfd5027e589663789820e95b21.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "We help hardware companies ship faster",
+      "longDescription": "There are 2 problems:\n\nThe first, CAD software is slow and the second, designing with it is a tedious process with many steps. Aurorin solves both of these problems by being a CAD software built from the ground up on a modern tech stack with AI at its heart.\n\nBuilding the CAD kernel lets us fully leverage AI while modernizing execution speed. Almost all existing CAD software (Solidworks, NX, Creo, Catia, Fusion 360, Onshape etc) use the same couple of underlying CAD kernels built in the 80's. It's common for these programs to take 4 hours to open a file.\n\nAurorin uses a custom parametric and B-Rep driven CAD Kernel built to take full advantage of modern CPUs and GPUs and be AI native.",
+      "industries": [
+        "B2B",
+        "Engineering, Product and Design"
+      ],
+      "tags": [],
+      "teamSize": "1",
+      "founders": [
+        {
+          "name": "Michael Baron",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/michael-andrew-baron/",
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "Jared Friedman",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://aurorincad.com",
+      "linkedIn": null,
+      "twitter": "https://x.com/nominalaviator?s=21",
+      "scrapedAt": "2026-01-30T01:45:14.814Z"
+    },
+    {
+      "name": "DAIVIN!",
+      "slug": "daivin",
+      "profileUrl": "https://www.ycombinator.com/companies/daivin",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/296158eb3d177c4c4d841962da8368230f473660.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "Tankless Dive Gear - Breath Autonomy at Sea, Land & Space",
+      "longDescription": "DAIVIN! builds tankless dive gear that unlocks breath autonomy in extreme environments. Starting from underwater environment our mission is to remove the need for dangerous, heavy and bulky oxygen tanks in space, air and on land and replace them with water!",
+      "industries": [
+        "Industrials",
+        "Defense"
+      ],
+      "tags": [],
+      "teamSize": "1",
+      "founders": [
+        {
+          "name": "Leo Kankkunen",
+          "title": "Founder & CEO",
+          "linkedIn": "https://www.linkedin.com/in/leo-kankkunen/",
+          "twitter": null
+        },
+        {
+          "name": "Company Launches",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "Tyler Bosmeny",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://www.daivin.tech/",
+      "linkedIn": "https://www.linkedin.com/company/daivin/",
+      "twitter": "https://x.com/se4lion",
+      "scrapedAt": "2026-01-30T01:45:20.652Z"
+    },
+    {
+      "name": "GrazeMate",
+      "slug": "grazemate",
+      "profileUrl": "https://www.ycombinator.com/companies/grazemate",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/d2a4475db614107fb0effa347e625a6885ca8045.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "Robot Cowboys that Muster Cattle with AI Drones",
+      "longDescription": "GrazeMate builds autonomous drones that herd cattle.\n\nAt the push of a button, our AI drones fly to a paddock, position themselves around the herd and guide them to new paddocks. Instead of a full day mustering with helicopters, motorbikes, and horses, farmers use GrazeMate.\n\nWe work with the world's largest cattle ranches, giving them complete visibility into their operations. While our drones herd cattle autonomously, they simultaneously estimate animal weights, measure grass biomass, monitoring water levels, and detect sick animals. We're building physical AI that gives farmers superhuman capabilities - managing thousands of livestock across massive distances from their phone.",
+      "industries": [
+        "Industrials",
+        "Agriculture"
+      ],
+      "tags": [],
+      "teamSize": "4",
+      "founders": [
+        {
+          "name": "Sam Rogers",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/samson-rogers/",
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "Tyler Bosmeny",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://grazemate.com",
+      "linkedIn": "https://www.linkedin.com/company/105884860",
+      "twitter": "https://twitter.com/ycombinator",
+      "scrapedAt": "2026-01-30T01:45:25.561Z"
+    },
+    {
+      "name": "Librar Labs",
+      "slug": "librar-labs",
+      "profileUrl": "https://www.ycombinator.com/companies/librar-labs",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/cc71fc515d431ac2186349ba194efc3183ef3d19.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "Intelligence for physical knowledge starting with libraries",
+      "longDescription": "AI for inventory starting with libraries. Librar speed up the manual & boring work, so librarians can build reading culture and community.\n\nA complete library system for any collection.",
+      "industries": [
+        "B2B"
+      ],
+      "tags": [],
+      "teamSize": "4",
+      "founders": [
+        {
+          "name": "Kaan Sirin",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/jonathangortz/",
+          "twitter": null
+        },
+        {
+          "name": "Librar Labs",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/chjacobsson",
+          "twitter": null
+        },
+        {
+          "name": "Jared Friedman",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/kaan-sirin-b0a6321b6",
+          "twitter": null
+        }
+      ],
+      "location": "",
+      "regions": [],
+      "website": "https://www.librarlabs.com",
+      "linkedIn": "https://www.linkedin.com/company/librar/",
+      "twitter": "https://x.com/LibrarLabs",
+      "scrapedAt": "2026-01-30T01:45:30.533Z"
+    },
+    {
+      "name": "Zymbly",
+      "slug": "zymbly",
+      "profileUrl": "https://www.ycombinator.com/companies/zymbly",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/15c98b3bf7b3907fd2d08caff7a209dd0bc20fd3.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "Automates admin for aircraft technicians",
+      "longDescription": null,
+      "industries": [
+        "B2B"
+      ],
+      "tags": [],
+      "teamSize": null,
+      "founders": [
+        {
+          "name": "Robbie Bourke",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/robbie-bourke-775494b/",
+          "twitter": null
+        },
+        {
+          "name": "Azmat Habibullah",
+          "title": "Founder",
+          "linkedIn": "https://linkedin.com/in/azmat-habibullah",
+          "twitter": null
+        },
+        {
+          "name": "Ben Jacob",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/ben-jacob-a49a3165/",
+          "twitter": null
+        },
+        {
+          "name": "Jared Friedman",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "",
+      "regions": [],
+      "website": "https://www.zymbly.com",
+      "linkedIn": null,
+      "twitter": "https://x.com/azmathabibullah",
+      "scrapedAt": "2026-01-30T01:45:35.429Z"
+    },
+    {
+      "name": "Ritivel",
+      "slug": "ritivel",
+      "profileUrl": "https://www.ycombinator.com/companies/ritivel",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/20339e5cb76cdfb65db692fb1ab38e8c6f710609.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "We turn clinical trial data into FDA submission documents in minutes",
+      "longDescription": "Ritivel turns raw clinical trial data into FDA submission documents in minutes. Traditionally, medical writers spend 8-12 weeks manually compiling data; our system uses study protocol and statistical outputs to instantly generate these reports with full traceability to the source data.\n\nClinical development is pharma's biggest bottleneck. Despite rising R&D, trial timelines have increased 33% over the last decade. Accelerating clinical timelines by 20% unlocks hundreds of millions in additional revenue per drug by extending patent life.\n\nGeneric AI fails in pharma due to a lack of traceability, with only 28% of pilots reaching production - the FDA requires traceability for all claims. Our proprietary engine solves this with word-level traceability, linking every generated sentence to clinical evidence. We deploy 100% on-premise to keep sensitive patient data within the client's infrastructure, making us a trusted AI partner for pharma.\n\nWe automate the most complex parts of CSRs (clinical narratives and biostatistical analysis). Our high-quality output, validated by senior regulatory writers, costs 1/100th of human writing. We're built by experts from Microsoft, Kearney, and IQVIA - combining deep AI engineering with regulatory expertise to solve the \"last mile\" of drug development—a problem generic AI wrappers can't solve because they don't understand the standards or FDA requirements.",
+      "industries": [
+        "Healthcare",
+        "Healthcare IT"
+      ],
+      "tags": [],
+      "teamSize": "3",
+      "founders": [
+        {
+          "name": "Nirmit Arora",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/nirmitarora",
+          "twitter": null
+        },
+        {
+          "name": "Gunin Gupta",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/guningupta/",
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/tankalapavankalyan/",
+          "twitter": null
+        },
+        {
+          "name": "Gustaf Alstromer",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://www.ritivel.com",
+      "linkedIn": "https://www.linkedin.com/company/ritivel",
+      "twitter": "https://x.com/NirmitArora26",
+      "scrapedAt": "2026-01-30T01:45:40.479Z"
+    },
+    {
+      "name": "Pollinate",
+      "slug": "pollinate",
+      "profileUrl": "https://www.ycombinator.com/companies/pollinate",
+      "logoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/a91425bc13e71d0ca296b97834e36834cea9ce3a.png",
+      "batch": "W26",
+      "status": "Active",
+      "oneLiner": "AI Agents for the supply chain.",
+      "longDescription": "Supply chains still run on spreadsheets and inboxes because ERPs are rigid and the data is messy. We're solving this problem by building an ontology where agents can operate and provide outcomes for our customers.\n\nWe start with procurement, by automating three-way match: extracting supplier invoices from email and matching them to the correct PO and receipt across ERPs.\n\nLearn more at pollinate.tech",
+      "industries": [
+        "B2B",
+        "Supply Chain and Logistics"
+      ],
+      "tags": [],
+      "teamSize": "2",
+      "founders": [
+        {
+          "name": "Corey Berther",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/corey-berther/",
+          "twitter": null
+        },
+        {
+          "name": "Adeep Mitra",
+          "title": "Founder",
+          "linkedIn": "https://www.linkedin.com/in/adeep-mitra-b71030277/",
+          "twitter": null
+        },
+        {
+          "name": "San Francisco",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        },
+        {
+          "name": "Ankit Gupta",
+          "title": "Founder",
+          "linkedIn": null,
+          "twitter": null
+        }
+      ],
+      "location": "San Francisco",
+      "regions": [],
+      "website": "https://www.pollinate.tech/",
+      "linkedIn": "https://www.linkedin.com/company/104852164/admin/dashboard/",
+      "twitter": "https://x.com/adeepmi",
+      "scrapedAt": "2026-01-30T01:45:45.420Z"
+    }
+  ],
+  "failedUrls": [],
+  "processedSlugs": [
+    "tsenta",
+    "martini",
+    "shofo",
+    "aurorin-cad",
+    "daivin",
+    "grazemate",
+    "librar-labs",
+    "zymbly",
+    "ritivel",
+    "pollinate"
+  ]
+}
