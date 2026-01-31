@@ -1,44 +1,48 @@
-# template/source.yaml
-## NOTE: DO NOT CHANGE THIS FILE. IT IS A TEMPLATE EXAMPLE
+# Template source.yaml
+# Copy this file when creating a new scraper and fill in your values.
+#
+# Required fields:
+#   - source_id: Unique identifier (format: industry/source_name)
+#   - display_name: Human-readable name
+#   - entity_type: "person", "company", or "both"
+#   - data_as_of: ISO date when data was scraped (YYYY-MM-DD)
+#   - start_urls: List of URLs to scrape
+#   - run_command: Command to run the scraper
+#   - refresh: How often to refresh ("daily", "weekly", "monthly", "quarterly", "yearly")
+#   - primary_key_strategy: How to generate unique keys (see below)
+#   - expected_volume_range: Expected record count range
 
-source_id: "law/skadden"
-display_name: "Skadden Professionals"
-entity_type: "person" # "person" | "company" | "both"
-
-# REQUIRED: Date of the data snapshot (YYYY-MM-DD)
-# - For live APIs: date the scrape was run
-# - For versioned data: data release date (e.g., "2025-Q3" -> "2025-09-30")
-# - For static data: last verification date
-data_as_of: "2026-01-30"
+source_id: "industry/example_source"
+display_name: "Example Source Directory"
+entity_type: "person"
+data_as_of: "2024-01-01"
 
 start_urls:
-  - "https://www.skadden.com/professionals"
+  - "https://example.com/directory"
 
-# how to run this scraper from this folder
 run_command: "npx tsx scraper.ts"
+refresh: "monthly"
 
-refresh: "yearly" # "daily" | "weekly" | "monthly" | "quarterly" | "yearly"
-
-# REQUIRED: deterministic strategy used to compute core.primary_key
+# Primary key strategy options:
+#   type: "stable_id"   - Use source's unique ID (best option)
+#     stable_id_context_path: ["context", "field_name"]  # Path from record root
+#   type: "url"         - Use URL path as key
+#   type: "fingerprint" - Hash of specified fields
+#     fingerprint_fields: ["person.full_name", "context.company"]
+#   type: "url_fingerprint" - URL + hash for disambiguation
 primary_key_strategy:
-  type: "url"   # "stable_id" | "url" | "url_fingerprint" | "fingerprint"
-  # for type=stable_id, specify the path in context, like ["cert"] or ["cu_number"]
-  stable_id_context_path: null
-  # for type=url or url_fingerprint, specify which URL field is canonical
-  canonical_url_field: "core.raw_url" # "core.raw_url" | "person.profile_url" | "company.profile_url"
-  # for fingerprinting (url_fingerprint or fingerprint) specify input fields (best effort)
-  fingerprint_fields:
-    - "core.raw_url"
-    - "person.full_name"
-    - "person.title"
-    - "person.company_name"
-    - "contact.location.city"
-    - "contact.location.state"
-    - "contact.email"
+  type: "stable_id"
+  stable_id_context_path:
+    - "context"
+    - "original_id"
 
 expected_volume_range:
   min: 100
-  max: 10000
+  max: 5000
 
+# Optional: Notes about the source
 notes: |
-  Anything special about this source (rate limits, bot protection, pagination quirks).
+  Add any special notes here:
+  - Rate limiting requirements
+  - Authentication needs
+  - Known issues or quirks

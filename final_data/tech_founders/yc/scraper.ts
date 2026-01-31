@@ -13,14 +13,20 @@
 import { chromium, Browser, Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
 
-const SOURCE_ID = "tech_founders/yc";
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
+
 const BASE_URL = 'https://www.ycombinator.com';
 const COMPANIES_URL = `${BASE_URL}/companies`;
-const OUTPUT_DIR = path.join(__dirname, 'output');
-const LEADS_FILE = path.join(OUTPUT_DIR, 'leads.jsonl');
-const RUN_FILE = path.join(OUTPUT_DIR, 'run.json');
-const PROGRESS_FILE = path.join(OUTPUT_DIR, 'scrape-progress.json');
+const PROGRESS_FILE = path.join(paths.outputDir, 'scrape-progress.json');
 
 const DELAY_BETWEEN_SCROLLS = 2000;
 const DELAY_BETWEEN_PROFILES = 2500;
@@ -154,13 +160,13 @@ function convertToLeadRecord(company: Company, founder: Founder): LeadRecord {
     socials.push({ platform: 'twitter', url: founder.twitter });
   }
 
-  return {
+  const record: LeadRecord = {
     core: {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       entity_type: "person",
       scraped_at: company.scrapedAt,
       raw_url: company.profileUrl,
-      primary_key: `${SOURCE_ID}:founder:${company.slug}:${normalizeFounderName(founder.name)}`,
+      primary_key: "", // Will be set below
     },
     person: {
       full_name: founder.name,
@@ -174,6 +180,7 @@ function convertToLeadRecord(company: Company, founder: Founder): LeadRecord {
       location: Object.keys(location).length > 0 ? location : undefined,
     },
     context: {
+      company_slug: company.slug, // Required for fingerprint primary key
       yc_batch: company.batch || undefined,
       company_status: company.status || undefined,
       company_one_liner: company.oneLiner || undefined,
@@ -185,6 +192,11 @@ function convertToLeadRecord(company: Company, founder: Founder): LeadRecord {
       founder_role: founder.title || undefined,
     },
   };
+
+  // Generate primary key using fingerprint strategy from source.yaml
+  record.core.primary_key = generatePrimaryKey(config, record as unknown as Record<string, unknown>, company.profileUrl);
+
+  return record;
 }
 
 async function extractCompaniesFromPage(page: Page): Promise<{ slug: string; name: string; location: string; oneLiner: string; industries: string[]; profileUrl: string }[]> {
@@ -515,9 +527,7 @@ async function main() {
   console.log(TEST_MODE ? '[TEST MODE - 10 companies only]' : '[FULL SCRAPE]');
   console.log('='.repeat(60));
 
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  ensureOutputDir(__dirname);
 
   let progress = loadProgress();
   console.log(`\nLoaded progress: ${progress.companies.length} companies previously scraped`);
@@ -593,11 +603,11 @@ async function main() {
       }
     }
 
-    fs.writeFileSync(LEADS_FILE, records.join('\n') + '\n');
+    fs.writeFileSync(paths.leadsFile, records.join('\n') + '\n');
 
     const endTime = new Date().toISOString();
     const runJson = {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       run_id: runId,
       started_at: startTime,
       ended_at: endTime,
@@ -606,14 +616,17 @@ async function main() {
       records_written: recordsWritten,
       error_count: errorCount,
     };
-    fs.writeFileSync(RUN_FILE, JSON.stringify(runJson, null, 2));
+    fs.writeFileSync(paths.runFile, JSON.stringify(runJson, null, 2));
+
+    // Update data_as_of in source.yaml
+    updateDataAsOf(__dirname);
 
     console.log(`\n${'='.repeat(60)}`);
     console.log('Scraping complete!');
     console.log(`Total companies scraped: ${progress.companies.length}`);
     console.log(`Total founders written: ${recordsWritten}`);
     console.log(`Failed URLs: ${progress.failedUrls.length}`);
-    console.log(`Output: ${LEADS_FILE}`);
+    console.log(`Output: ${paths.leadsFile}`);
     console.log(`${'='.repeat(60)}`);
 
   } catch (error) {

@@ -216,6 +216,7 @@ Every scraper directory MUST contain a source.yaml file.
 
 Required fields
 
+```yaml
 source_id: string           # e.g. "finance/fdic"
 display_name: string        # human-readable name
 entity_type: string         # "person" | "company" | "both"
@@ -223,12 +224,67 @@ data_as_of: string          # REQUIRED: ISO date (YYYY-MM-DD) of data snapshot
 start_urls: string[]        # entry point URLs
 run_command: string         # how to execute the scraper
 refresh: string             # "daily" | "weekly" | "monthly" | "quarterly" | "yearly"
-primary_key_strategy: object
+primary_key_strategy: object  # see below
 expected_volume_range: { min: number, max: number }
+```
+
+primary_key_strategy format
+
+The primary_key_strategy object defines how to generate deterministic primary keys.
+
+```yaml
+# Option 1: stable_id - Use when source provides unique identifiers
+primary_key_strategy:
+  type: "stable_id"
+  stable_id_context_path:
+    - "context"
+    - "cert"  # Generates: source_id:context.cert:12345
+
+# Option 2: url - Use when profile URLs are stable and unique
+primary_key_strategy:
+  type: "url"
+  canonical_url_field: "core.raw_url"  # Generates: source_id:url:/path
+
+# Option 3: fingerprint - Use when no stable ID exists
+primary_key_strategy:
+  type: "fingerprint"
+  fingerprint_fields:
+    - "person.full_name"
+    - "contact.location.city"
+    - "contact.location.state"  # Generates: source_id:fp:abc123
+
+# Option 4: url_fingerprint - URL + hash for disambiguation
+primary_key_strategy:
+  type: "url_fingerprint"
+  fingerprint_fields:
+    - "person.full_name"  # Generates: source_id:url:hash
+```
+
+Complete source.yaml example
+
+```yaml
+source_id: "finance/fdic"
+display_name: "FDIC Bank Directory"
+entity_type: "company"
+data_as_of: "2024-01-15"
+start_urls:
+  - "https://api.fdic.gov/banks/institutions"
+run_command: "npx tsx scraper.ts"
+refresh: "monthly"
+primary_key_strategy:
+  type: "stable_id"
+  stable_id_context_path:
+    - "context"
+    - "cert"
+expected_volume_range:
+  min: 4000
+  max: 6000
+notes: "FDIC public API, no authentication required"
+```
 
 Rules
 	•	data_as_of is MANDATORY - it pins the exact data snapshot
-	•	data_as_of must be updated after every successful scrape
+	•	data_as_of must be updated after every successful scrape (use updateDataAsOf())
 	•	For live APIs (FDIC), use the date the scrape was run
 	•	For versioned data (NCUA quarterly), use the data release date
 	•	For static data (CSBS), use the last verification date

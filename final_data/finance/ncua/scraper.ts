@@ -1,12 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
 
-const SOURCE_ID = "finance/ncua";
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
 const RAW_URL = "https://ncua.gov/analysis/credit-union-corporate-call-report-data";
-const OUTPUT_DIR = path.join(__dirname, "output");
 const EXTRACTED_DIR = path.join(__dirname, "extracted");
-const LEADS_FILE = path.join(OUTPUT_DIR, "leads.jsonl");
-const RUN_FILE = path.join(OUTPUT_DIR, "run.json");
 
 interface LeadRecord {
   core: {
@@ -119,9 +124,7 @@ async function main() {
   console.log("=== NCUA Credit Union Scraper ===\n");
 
   // Ensure output directory exists
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  ensureOutputDir(__dirname);
 
   // Check if extracted files exist
   const requiredFiles = ["FOICU.txt", "FS220.txt", "FS220A.txt"];
@@ -214,11 +217,11 @@ async function main() {
   for (const cu of cuData) {
     const record: LeadRecord = {
       core: {
-        source_id: SOURCE_ID,
+        source_id: config.source_id,
         entity_type: "company",
         scraped_at: startTime,
         raw_url: RAW_URL,
-        primary_key: `${SOURCE_ID}:cu_number:${cu.cuNumber}`,
+        primary_key: "", // Will be set below
       },
       company: {
         company_name: cu.name,
@@ -246,15 +249,17 @@ async function main() {
         total_employees: cu.totalEmployees ?? undefined,
       },
     };
+    // Generate primary key using strategy from source.yaml
+    record.core.primary_key = generatePrimaryKey(config, record as unknown as Record<string, unknown>, RAW_URL);
     records.push(JSON.stringify(record));
   }
 
-  fs.writeFileSync(LEADS_FILE, records.join("\n") + "\n");
+  fs.writeFileSync(paths.leadsFile, records.join("\n") + "\n");
 
   // Write run.json
   const endTime = new Date().toISOString();
   const runJson = {
-    source_id: SOURCE_ID,
+    source_id: config.source_id,
     run_id: runId,
     started_at: startTime,
     ended_at: endTime,
@@ -263,12 +268,15 @@ async function main() {
     records_written: records.length,
     error_count: 0,
   };
-  fs.writeFileSync(RUN_FILE, JSON.stringify(runJson, null, 2));
+  fs.writeFileSync(paths.runFile, JSON.stringify(runJson, null, 2));
+
+  // Update data_as_of in source.yaml
+  updateDataAsOf(__dirname);
 
   console.log("\n=== Summary ===");
   console.log(`Total credit unions: ${records.length}`);
-  console.log(`\nOutput: ${LEADS_FILE}`);
-  console.log(`Run metadata: ${RUN_FILE}`);
+  console.log(`\nOutput: ${paths.leadsFile}`);
+  console.log(`Run metadata: ${paths.runFile}`);
 }
 
 main().catch(console.error);

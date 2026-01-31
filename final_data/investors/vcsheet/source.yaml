@@ -7,12 +7,13 @@ start_urls:
   - "https://www.vcsheet.com/funds"
 
 run_command: "npx tsx scraper.ts"
-
 refresh: "monthly"
 
 primary_key_strategy:
-  type: "url"
-  canonical_url_field: "core.raw_url"
+  type: "stable_id"
+  stable_id_context_path:
+    - "context"
+    - "slug"
 
 expected_volume_range:
   min: 500

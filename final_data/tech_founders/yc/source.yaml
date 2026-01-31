@@ -1,7 +1,23 @@
-source_id: tech_founders/yc
-display_name: Y Combinator Founders
-entity_type: person
-data_as_of: "2026-01-30"
-run_command: npx tsx scraper.ts
-primary_key_strategy: "tech_founders/yc:founder:{company_slug}:{normalized_founder_name}"
-refresh_frequency: monthly
+source_id: "tech_founders/yc"
+display_name: "Y Combinator Founders"
+entity_type: "person"
+data_as_of: "2026-01-31"
+
+start_urls:
+  - "https://www.ycombinator.com/companies"
+
+run_command: "npx tsx scraper.ts"
+refresh: "monthly"
+
+primary_key_strategy:
+  type: "fingerprint"
+  fingerprint_fields:
+    - "context.company_slug"
+    - "person.full_name"
+
+expected_volume_range:
+  min: 10000
+  max: 20000
+
+notes: |
+  Scrapes YC company directory for founder information.

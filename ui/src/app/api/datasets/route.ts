@@ -17,26 +17,34 @@ interface Dataset {
   industry: string;
   scraper: string;
   source_id: string;
+  status: "final" | "in_progress";
   run: RunData | null;
   readme: string;
   leadsCount: number;
 }
 
-export async function GET() {
-  const dataDir = path.join(process.cwd(), "..", "data");
+function scanDataDirectory(
+  baseDir: string,
+  status: "final" | "in_progress"
+): Dataset[] {
   const datasets: Dataset[] = [];
 
-  const industries = fs.readdirSync(dataDir).filter((f) => {
-    const fullPath = path.join(dataDir, f);
+  if (!fs.existsSync(baseDir)) {
+    return datasets;
+  }
+
+  const industries = fs.readdirSync(baseDir).filter((f) => {
+    const fullPath = path.join(baseDir, f);
     return (
       fs.statSync(fullPath).isDirectory() &&
       !f.startsWith(".") &&
-      f !== "template"
+      f !== "template" &&
+      f !== "node_modules"
     );
   });
 
   for (const industry of industries) {
-    const industryPath = path.join(dataDir, industry);
+    const industryPath = path.join(baseDir, industry);
     const scrapers = fs.readdirSync(industryPath).filter((f) => {
       const fullPath = path.join(industryPath, f);
       return fs.statSync(fullPath).isDirectory() && !f.startsWith(".");
@@ -77,12 +85,26 @@ export async function GET() {
         industry,
         scraper,
         source_id: run?.source_id || `${industry}/${scraper}`,
+        status,
         run,
         readme,
         leadsCount,
       });
     }
   }
+
+  return datasets;
+}
+
+export async function GET() {
+  const rootDir = path.join(process.cwd(), "..");
+  const finalDataDir = path.join(rootDir, "final_data");
+  const inProgressDir = path.join(rootDir, "data_in_progress");
+
+  const finalDatasets = scanDataDirectory(finalDataDir, "final");
+  const inProgressDatasets = scanDataDirectory(inProgressDir, "in_progress");
+
+  const datasets = [...finalDatasets, ...inProgressDatasets];
 
   return NextResponse.json(datasets);
 }

@@ -1,10 +1,16 @@
 import * as fs from "fs";
-import * as path from "path";
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
 
-const SOURCE_ID = "finance/fdic";
-const OUTPUT_DIR = path.join(__dirname, "output");
-const LEADS_FILE = path.join(OUTPUT_DIR, "leads.jsonl");
-const RUN_FILE = path.join(OUTPUT_DIR, "run.json");
+// Load config from source.yaml
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
+
 const INSTITUTIONS_API = "https://api.fdic.gov/banks/institutions";
 const FINANCIALS_API = "https://api.fdic.gov/banks/financials";
 const BATCH_SIZE = 1000;
@@ -151,13 +157,13 @@ function extractDomain(website: string): string | undefined {
 
 function convertToLeadRecord(inst: Institution, fin: Financial | undefined, scrapedAt: string): LeadRecord {
   const website = inst.WEBADDR || "";
-  return {
+  const record: LeadRecord = {
     core: {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       entity_type: "company",
       scraped_at: scrapedAt,
       raw_url: INSTITUTIONS_API,
-      primary_key: `${SOURCE_ID}:cert:${inst.CERT}`,
+      primary_key: "", // Will be set below
     },
     company: {
       company_name: inst.NAME || "",
@@ -185,18 +191,19 @@ function convertToLeadRecord(inst: Institution, fin: Financial | undefined, scra
       employee_count: fin?.NUMEMP ?? undefined,
     },
   };
+  // Generate primary key using strategy from source.yaml
+  record.core.primary_key = generatePrimaryKey(config, record as unknown as Record<string, unknown>, INSTITUTIONS_API);
+  return record;
 }
 
 async function main() {
   const startTime = new Date().toISOString();
   const runId = `run_${Date.now()}`;
 
-  console.log("=== FDIC Active Banks Scraper ===\n");
+  console.log(`=== ${config.display_name} Scraper ===\n`);
 
   // Ensure output directory exists
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  ensureOutputDir(__dirname);
 
   // Fetch data
   const institutions = await fetchAllInstitutions();
@@ -218,12 +225,12 @@ async function main() {
     records.push(JSON.stringify(record));
   }
 
-  fs.writeFileSync(LEADS_FILE, records.join("\n") + "\n");
+  fs.writeFileSync(paths.leadsFile, records.join("\n") + "\n");
 
   // Write run.json
   const endTime = new Date().toISOString();
   const runJson = {
-    source_id: SOURCE_ID,
+    source_id: config.source_id,
     run_id: runId,
     started_at: startTime,
     ended_at: endTime,
@@ -232,7 +239,10 @@ async function main() {
     records_written: records.length,
     error_count: 0,
   };
-  fs.writeFileSync(RUN_FILE, JSON.stringify(runJson, null, 2));
+  fs.writeFileSync(paths.runFile, JSON.stringify(runJson, null, 2));
+
+  // Update data_as_of in source.yaml
+  updateDataAsOf(__dirname);
 
   // Summary stats
   const withAssets = institutions.filter((i) => financials.has(i.CERT));
@@ -240,8 +250,9 @@ async function main() {
   console.log("\n=== Summary ===");
   console.log(`Total active banks: ${institutions.length}`);
   console.log(`Banks with financial data: ${withAssets.length}`);
-  console.log(`\nOutput: ${LEADS_FILE}`);
-  console.log(`Run metadata: ${RUN_FILE}`);
+  console.log(`\nOutput: ${paths.leadsFile}`);
+  console.log(`Run metadata: ${paths.runFile}`);
+  console.log(`Updated data_as_of in source.yaml`);
 }
 
 main().catch(console.error);

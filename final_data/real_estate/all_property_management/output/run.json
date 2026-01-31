@@ -1,10 +1,10 @@
 {
   "source_id": "real_estate/all_property_management",
-  "run_id": "run_1769815359744",
-  "started_at": "2026-01-30T01:31:15.774Z",
-  "ended_at": "2026-01-30T23:22:39.744Z",
-  "records_found": 2733,
-  "records_valid": 2733,
-  "records_written": 2733,
+  "run_id": "real_estate/all_property_management:2026-01-31T22:29:42.270Z",
+  "started_at": "2026-01-31T22:29:42.270Z",
+  "ended_at": "2026-01-31T22:29:44.185Z",
+  "records_found": 2734,
+  "records_valid": 10,
+  "records_written": 10,
   "error_count": 0
 }

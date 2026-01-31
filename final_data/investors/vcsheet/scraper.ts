@@ -6,13 +6,19 @@
 import { chromium, Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
 
-const SOURCE_ID = 'investors/vcsheet';
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
+
 const BASE_URL = 'https://www.vcsheet.com';
-const OUTPUT_DIR = path.join(__dirname, 'output');
-const LEADS_FILE = path.join(OUTPUT_DIR, 'leads.jsonl');
-const RUN_FILE = path.join(OUTPUT_DIR, 'run.json');
-const PROGRESS_FILE = path.join(OUTPUT_DIR, 'scrape-progress.json');
+const PROGRESS_FILE = path.join(paths.outputDir, 'scrape-progress.json');
 
 const DELAY_BETWEEN_PROFILES = 2000;
 const BROWSER_RESTART_INTERVAL = 100;
@@ -26,14 +32,12 @@ async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function ensureOutputDir() {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+function ensureOutputDirLocal() {
+  ensureOutputDir(__dirname);
 }
 
 function loadProgress(): Progress {
-  ensureOutputDir();
+  ensureOutputDirLocal();
   if (fs.existsSync(PROGRESS_FILE)) {
     return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
   }
@@ -41,7 +45,7 @@ function loadProgress(): Progress {
 }
 
 function saveProgress(progress: Progress) {
-  ensureOutputDir();
+  ensureOutputDirLocal();
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2));
 }
 
@@ -150,13 +154,13 @@ async function scrapeFundProfile(page: Page, slug: string): Promise<string | nul
     if (data.twitter) socials.push({ platform: 'twitter', url: data.twitter });
     if (data.crunchbase) socials.push({ platform: 'crunchbase', url: data.crunchbase });
 
-    const record = {
+    const record: Record<string, unknown> = {
       core: {
-        source_id: SOURCE_ID,
+        source_id: config.source_id,
         entity_type: 'company',
         scraped_at: new Date().toISOString(),
         raw_url: url,
-        primary_key: `${SOURCE_ID}:slug:${slug}`
+        primary_key: '' // Will be set below
       },
       company: {
         company_name: data.name || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -179,6 +183,9 @@ async function scrapeFundProfile(page: Page, slug: string): Promise<string | nul
       }
     };
 
+    // Generate primary key using strategy from source.yaml
+    (record.core as Record<string, unknown>).primary_key = generatePrimaryKey(config, record, url);
+
     return JSON.stringify(record);
   } catch (e) {
     console.error(`  Error: ${e}`);
@@ -192,7 +199,7 @@ async function main() {
   console.log('='.repeat(50));
 
   const startedAt = new Date().toISOString();
-  ensureOutputDir();
+  ensureOutputDirLocal();
 
   let progress = loadProgress();
   const processedSet = new Set(progress.processedSlugs);
@@ -215,7 +222,7 @@ async function main() {
 
     let validCount = 0;
     let errorCount = 0;
-    const writeStream = fs.createWriteStream(LEADS_FILE, { flags: 'a' });
+    const writeStream = fs.createWriteStream(paths.leadsFile, { flags: 'a' });
 
     for (let i = 0; i < toProcess.length; i++) {
       const slug = toProcess[i];
@@ -256,10 +263,10 @@ async function main() {
     const endedAt = new Date().toISOString();
 
     // Count total records in file
-    const totalRecords = fs.readFileSync(LEADS_FILE, 'utf-8').split('\n').filter(l => l.trim()).length;
+    const totalRecords = fs.readFileSync(paths.leadsFile, 'utf-8').split('\n').filter(l => l.trim()).length;
 
     const runJson = {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       run_id: `run_${Date.now()}`,
       started_at: startedAt,
       ended_at: endedAt,
@@ -269,10 +276,13 @@ async function main() {
       error_count: progress.failedSlugs.length
     };
 
-    fs.writeFileSync(RUN_FILE, JSON.stringify(runJson, null, 2));
+    fs.writeFileSync(paths.runFile, JSON.stringify(runJson, null, 2));
+
+    // Update data_as_of in source.yaml
+    updateDataAsOf(__dirname);
 
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`Done! ${totalRecords} records in ${LEADS_FILE}`);
+    console.log(`Done! ${totalRecords} records in ${paths.leadsFile}`);
     console.log(`Failed: ${progress.failedSlugs.length}`);
 
   } finally {

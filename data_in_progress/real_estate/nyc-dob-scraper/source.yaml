@@ -1,6 +1,0 @@
-source_id: real_estate/nyc_dob
-display_name: NYC DOB Permit Owners
-entity_type: mixed  # company or person depending on owner type
-run_command: npx tsx scraper.ts
-primary_key_strategy: "real_estate/nyc_dob:job:{job_filing_number}"
-refresh_frequency: weekly

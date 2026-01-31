@@ -24,15 +24,20 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const SOURCE_ID = 'real_estate/all_property_management';
-const OUTPUT_DIR = path.join(__dirname, 'output');
-const LEADS_FILE = path.join(OUTPUT_DIR, 'leads.jsonl');
-const RUN_FILE = path.join(OUTPUT_DIR, 'run.json');
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
 
 // =============================================================================
 // Types
@@ -310,13 +315,14 @@ function extractDomain(website: string | undefined): string | undefined {
 }
 
 function convertToLeadRecord(pm: PropertyManager) {
-  return {
+  const rawUrl = `https://www.allpropertymanagement.com/property-managers/${pm.id}`;
+  const record: Record<string, unknown> = {
     core: {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       entity_type: "company" as const,
       scraped_at: pm.scrapedAt,
-      raw_url: `https://www.allpropertymanagement.com/property-managers/${pm.id}`,
-      primary_key: `${SOURCE_ID}:id:${pm.id}`,
+      raw_url: rawUrl,
+      primary_key: "", // Will be set below
     },
     company: {
       company_name: pm.name,
@@ -334,6 +340,7 @@ function convertToLeadRecord(pm: PropertyManager) {
       },
     },
     context: {
+      id: pm.id, // Required for primary key generation
       street: pm.street || undefined,
       tagline: pm.tagline || undefined,
       property_types: pm.propertyTypes?.map(pt => pt.name).join('; ') || undefined,
@@ -345,6 +352,11 @@ function convertToLeadRecord(pm: PropertyManager) {
         : undefined,
     },
   };
+
+  // Generate primary key using strategy from source.yaml
+  (record.core as Record<string, unknown>).primary_key = generatePrimaryKey(config, record, rawUrl);
+
+  return record;
 }
 
 function saveJsonl(managers: PropertyManager[], outputPath: string): number {
@@ -364,7 +376,7 @@ function saveRunJson(
   errorCount: number
 ): void {
   const runData = {
-    source_id: SOURCE_ID,
+    source_id: config.source_id,
     run_id: runId,
     started_at: startedAt,
     ended_at: endedAt,
@@ -388,7 +400,7 @@ async function main() {
 
   // Track run timing
   const startedAt = new Date().toISOString();
-  const runId = `${SOURCE_ID}:${startedAt}`;
+  const runId = `${config.source_id}:${startedAt}`;
   const startTime = Date.now();
   let errorCount = 0;
 
@@ -462,17 +474,15 @@ async function main() {
   }
 
   // Ensure output directory exists
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  ensureOutputDir(__dirname);
 
   // Save JSONL output
-  const recordsWritten = saveJsonl(filteredManagers, LEADS_FILE);
+  const recordsWritten = saveJsonl(filteredManagers, paths.leadsFile);
 
   // Save run metadata
   const endedAt = new Date().toISOString();
   saveRunJson(
-    RUN_FILE,
+    paths.runFile,
     runId,
     startedAt,
     endedAt,
@@ -482,9 +492,12 @@ async function main() {
     errorCount
   );
 
+  // Update data_as_of in source.yaml
+  updateDataAsOf(__dirname);
+
   console.log('\nOutput saved:');
-  console.log(`  JSONL: ${LEADS_FILE}`);
-  console.log(`  Run:   ${RUN_FILE}`);
+  console.log(`  JSONL: ${paths.leadsFile}`);
+  console.log(`  Run:   ${paths.runFile}`);
 
   // Sample output
   console.log('\n' + '='.repeat(60));

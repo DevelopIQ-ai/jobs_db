@@ -19,6 +19,7 @@ interface Dataset {
   industry: string;
   scraper: string;
   source_id: string;
+  status: "final" | "in_progress";
   run: RunData | null;
   readme: string;
   leadsCount: number;
@@ -87,6 +88,16 @@ function getIndustryColor(industry: string): string {
   return colors[industry] || "bg-gray-100 text-gray-800";
 }
 
+function getStatusLabel(status: "final" | "in_progress"): string {
+  return status === "final" ? "Final" : "In Progress";
+}
+
+function getStatusColor(status: "final" | "in_progress"): string {
+  return status === "final"
+    ? "bg-green-100 text-green-800 border-green-200"
+    : "bg-yellow-100 text-yellow-800 border-yellow-200";
+}
+
 function getReadmeDescription(readme: string): string {
   const lines = readme.split("\n");
   for (const line of lines) {
@@ -112,9 +123,14 @@ function DatasetCard({ dataset, delay }: { dataset: Dataset; delay: number }) {
       <div className="p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <span className={`inline-block text-xs px-2 py-1 rounded mb-2 ${getIndustryColor(dataset.industry)}`}>
-              {getIndustryLabel(dataset.industry)}
-            </span>
+            <div className="flex gap-2 mb-2">
+              <span className={`inline-block text-xs px-2 py-1 rounded ${getIndustryColor(dataset.industry)}`}>
+                {getIndustryLabel(dataset.industry)}
+              </span>
+              <span className={`inline-block text-xs px-2 py-1 rounded border ${getStatusColor(dataset.status)}`}>
+                {getStatusLabel(dataset.status)}
+              </span>
+            </div>
             <h3 className="font-bold text-lg">{dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}</h3>
             <p className="text-gray-500 text-sm font-mono">{dataset.source_id}</p>
           </div>
@@ -169,7 +185,8 @@ function DatasetCard({ dataset, delay }: { dataset: Dataset; delay: number }) {
 export default function Dashboard() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
+  const [industryFilter, setIndustryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     fetch("/api/datasets")
@@ -182,7 +199,11 @@ export default function Dashboard() {
   }, []);
 
   const industries = [...new Set(datasets.map((d) => d.industry))];
-  const filteredDatasets = filter === "all" ? datasets : datasets.filter((d) => d.industry === filter);
+  const filteredDatasets = datasets.filter((d) => {
+    const matchesIndustry = industryFilter === "all" || d.industry === industryFilter;
+    const matchesStatus = statusFilter === "all" || d.status === statusFilter;
+    return matchesIndustry && matchesStatus;
+  });
 
   const totalRecords = datasets.reduce((sum, d) => sum + d.leadsCount, 0);
   const totalErrors = datasets.reduce((sum, d) => sum + (d.run?.error_count || 0), 0);
@@ -228,30 +249,69 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 text-sm border transition-colors ${
-              filter === "all"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
-            }`}
-          >
-            All
-          </button>
-          {industries.map((industry) => (
+        <div className="flex flex-col gap-4 mb-8">
+          {/* Status Filter */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-gray-500 py-2 mr-2">Status:</span>
             <button
-              key={industry}
-              onClick={() => setFilter(industry)}
+              onClick={() => setStatusFilter("all")}
               className={`px-4 py-2 text-sm border transition-colors ${
-                filter === industry
+                statusFilter === "all"
                   ? "bg-gray-900 text-white border-gray-900"
                   : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
               }`}
             >
-              {getIndustryLabel(industry)}
+              All
             </button>
-          ))}
+            <button
+              onClick={() => setStatusFilter("final")}
+              className={`px-4 py-2 text-sm border transition-colors ${
+                statusFilter === "final"
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-white text-gray-900 border-gray-300 hover:border-green-600"
+              }`}
+            >
+              Final
+            </button>
+            <button
+              onClick={() => setStatusFilter("in_progress")}
+              className={`px-4 py-2 text-sm border transition-colors ${
+                statusFilter === "in_progress"
+                  ? "bg-yellow-500 text-white border-yellow-500"
+                  : "bg-white text-gray-900 border-gray-300 hover:border-yellow-500"
+              }`}
+            >
+              In Progress
+            </button>
+          </div>
+
+          {/* Industry Filter */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-gray-500 py-2 mr-2">Industry:</span>
+            <button
+              onClick={() => setIndustryFilter("all")}
+              className={`px-4 py-2 text-sm border transition-colors ${
+                industryFilter === "all"
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
+              }`}
+            >
+              All
+            </button>
+            {industries.map((industry) => (
+              <button
+                key={industry}
+                onClick={() => setIndustryFilter(industry)}
+                className={`px-4 py-2 text-sm border transition-colors ${
+                  industryFilter === industry
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
+                }`}
+              >
+                {getIndustryLabel(industry)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Dataset Cards */}

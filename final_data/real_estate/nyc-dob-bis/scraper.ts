@@ -15,6 +15,13 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir as ensureOutputDirLib,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
 
 // =============================================================================
 // Types
@@ -64,12 +71,11 @@ interface ScrapeProgress {
 // Constants
 // =============================================================================
 
-const SOURCE_ID = 'real_estate/nyc_dob_bis';
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
+
 const BASE_URL = 'https://a810-bisweb.nyc.gov/bisweb';
-const OUTPUT_DIR = path.join(__dirname, 'output');
-const LEADS_FILE = path.join(OUTPUT_DIR, 'leads.jsonl');
-const RUN_FILE = path.join(OUTPUT_DIR, 'run.json');
-const PROGRESS_FILE = path.join(OUTPUT_DIR, 'scrape-progress.json');
+const PROGRESS_FILE = path.join(paths.outputDir, 'scrape-progress.json');
 
 const BOROUGH_NAMES: Record<number, string> = {
   1: 'Manhattan',
@@ -88,9 +94,7 @@ function delay(ms: number): Promise<void> {
 }
 
 function ensureOutputDir(): void {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  ensureOutputDirLib(__dirname);
 }
 
 function loadProgress(): ScrapeProgress | null {
@@ -467,20 +471,21 @@ function convertToLeadRecord(dev: Developer) {
   if (!displayName || displayName.length < 2) return null;
 
   const isCompany = hasBusinessName;
-  const baseRecord = {
+  const rawUrl = buildRawUrl(dev);
+  const baseRecord: Record<string, unknown> = {
     core: {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       entity_type: isCompany ? "company" as const : "person" as const,
       scraped_at: dev.scrapedAt,
-      raw_url: buildRawUrl(dev),
-      primary_key: `${SOURCE_ID}:job:${dev.jobNumber}`,
+      raw_url: rawUrl,
+      primary_key: "", // Will be set below
     },
     contact: {
       phone: dev.ownerPhone || undefined,
       location: { city: "New York", state: "NY", zip: dev.zipCode || undefined, country: "USA" },
     },
     context: {
-      job_number: dev.jobNumber,
+      job: dev.jobNumber, // Required for primary key generation
       job_type: dev.jobType || undefined,
       job_status: dev.jobStatus || undefined,
       file_date: dev.fileDate || undefined,
@@ -498,11 +503,17 @@ function convertToLeadRecord(dev: Developer) {
     },
   };
 
+  // Add entity-specific section
   if (isCompany) {
-    return { ...baseRecord, company: { company_name: displayName } };
+    baseRecord.company = { company_name: displayName };
   } else {
-    return { ...baseRecord, person: { full_name: displayName, company_name: dev.ownerBusinessName || undefined } };
+    baseRecord.person = { full_name: displayName, company_name: dev.ownerBusinessName || undefined };
   }
+
+  // Generate primary key using strategy from source.yaml
+  (baseRecord.core as Record<string, unknown>).primary_key = generatePrimaryKey(config, baseRecord, rawUrl);
+
+  return baseRecord;
 }
 
 // =============================================================================
@@ -592,20 +603,20 @@ async function main() {
     // Save final output
     const timestamp = new Date().toISOString().split('T')[0];
     const boroughSlug = BOROUGH_NAMES[borough].toLowerCase().replace(/\s+/g, '-');
-    const jsonPath = path.join(OUTPUT_DIR, `nyc-developers-${boroughSlug}-${timestamp}.json`);
-    const csvPath = path.join(OUTPUT_DIR, `nyc-developers-${boroughSlug}-${timestamp}.csv`);
+    const jsonPath = path.join(paths.outputDir, `nyc-developers-${boroughSlug}-${timestamp}.json`);
+    const csvPath = path.join(paths.outputDir, `nyc-developers-${boroughSlug}-${timestamp}.csv`);
 
     saveJson(uniqueDevelopers, jsonPath);
     saveCsv(uniqueDevelopers, csvPath);
 
     // Write JSONL output
     const records = uniqueDevelopers.map(d => convertToLeadRecord(d)).filter(Boolean);
-    fs.writeFileSync(LEADS_FILE, records.map(r => JSON.stringify(r)).join('\n') + '\n');
+    fs.writeFileSync(paths.leadsFile, records.map(r => JSON.stringify(r)).join('\n') + '\n');
 
     // Write run.json
     const endTime = new Date().toISOString();
-    fs.writeFileSync(RUN_FILE, JSON.stringify({
-      source_id: SOURCE_ID,
+    fs.writeFileSync(paths.runFile, JSON.stringify({
+      source_id: config.source_id,
       run_id: `run_${Date.now()}`,
       started_at: progress.lastUpdated,
       ended_at: endTime,
@@ -615,6 +626,9 @@ async function main() {
       error_count: uniqueDevelopers.length - records.length,
     }, null, 2));
 
+    // Update data_as_of in source.yaml
+    updateDataAsOf(__dirname);
+
     // Summary
     console.log('\n' + '='.repeat(60));
     console.log('Scrape Complete!');
@@ -623,8 +637,8 @@ async function main() {
     console.log(`Developers found: ${progress.developers.length}`);
     console.log(`Unique developers: ${uniqueDevelopers.length}`);
     console.log(`\nOutput:`);
-    console.log(`  JSONL: ${LEADS_FILE}`);
-    console.log(`  Run: ${RUN_FILE}`);
+    console.log(`  JSONL: ${paths.leadsFile}`);
+    console.log(`  Run: ${paths.runFile}`);
 
     // Sample
     console.log('\n--- Sample Results ---');
@@ -638,7 +652,7 @@ async function main() {
   } catch (error) {
     console.error('\nError:', error);
     if (progress.developers.length > 0) {
-      const jsonPath = path.join(OUTPUT_DIR, `nyc-developers-partial.json`);
+      const jsonPath = path.join(paths.outputDir, `nyc-developers-partial.json`);
       saveJson(progress.developers, jsonPath);
       console.log(`\nPartial results saved to: ${jsonPath}`);
     }

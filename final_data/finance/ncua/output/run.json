@@ -1,8 +1,8 @@
 {
   "source_id": "finance/ncua",
-  "run_id": "run_1769814260263",
-  "started_at": "2026-01-30T23:04:20.261Z",
-  "ended_at": "2026-01-30T23:04:20.548Z",
+  "run_id": "run_1769898136377",
+  "started_at": "2026-01-31T22:22:16.376Z",
+  "ended_at": "2026-01-31T22:22:16.612Z",
   "records_found": 4419,
   "records_valid": 4419,
   "records_written": 4419,

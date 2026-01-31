@@ -1,24 +1,41 @@
 /**
- * ICSC Member Directory Scraper - FULL VERSION
+ * ICSC Member Directory Scraper
  *
  * Scrapes ALL Owner/Developer members by filtering by state to bypass 1000 result limit.
  *
  * Usage:
- *   npx tsx scraper-full.ts
+ *   npx tsx scraper.ts
  */
 
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
+import {
+  loadSourceConfig,
+  updateDataAsOf,
+  getOutputPaths,
+  ensureOutputDir as ensureOutputDirLib,
+  generatePrimaryKey,
+} from "../../../lib/source-config";
+
+// Load environment variables from .env.local
+dotenv.config({ path: path.resolve(__dirname, '../../../.env.local') });
 
 // =============================================================================
-// Credentials
+// Credentials (from environment variables)
 // =============================================================================
 
 const CREDENTIALS = {
-  email: 'kush@developiq.ai',
-  password: '***REMOVED***',
+  email: process.env.ICSC_EMAIL || '',
+  password: process.env.ICSC_PASSWORD || '',
 };
+
+if (!CREDENTIALS.email || !CREDENTIALS.password) {
+  console.error('ERROR: ICSC credentials not found in environment variables.');
+  console.error('Please set ICSC_EMAIL and ICSC_PASSWORD in .env.local');
+  process.exit(1);
+}
 
 // =============================================================================
 // Types
@@ -48,12 +65,11 @@ interface ScrapeProgress {
 // Constants
 // =============================================================================
 
+const config = loadSourceConfig(__dirname);
+const paths = getOutputPaths(__dirname);
+
 const BASE_URL = 'https://www.icsc.com';
-const OUTPUT_DIR = path.join(__dirname, 'output');
-const PROGRESS_FILE = path.join(OUTPUT_DIR, 'full-scrape-progress.json');
-const SOURCE_ID = 'real_estate/icsc';
-const LEADS_FILE = path.join(OUTPUT_DIR, 'leads.jsonl');
-const RUN_FILE = path.join(OUTPUT_DIR, 'run.json');
+const PROGRESS_FILE = path.join(paths.outputDir, 'full-scrape-progress.json');
 
 // All US States + DC + some international
 const REGIONS = [
@@ -106,10 +122,8 @@ async function randomMouseMove(page: Page): Promise<void> {
   await page.mouse.move(x, y, { steps: 5 + Math.floor(Math.random() * 10) });
 }
 
-function ensureOutputDir(): void {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+function ensureOutputDirLocal(): void {
+  ensureOutputDirLib(__dirname);
 }
 
 function loadProgress(): ScrapeProgress | null {
@@ -124,7 +138,7 @@ function loadProgress(): ScrapeProgress | null {
 }
 
 function saveProgress(progress: ScrapeProgress): void {
-  ensureOutputDir();
+  ensureOutputDirLocal();
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2));
 }
 
@@ -395,13 +409,13 @@ function saveCsv(members: ICSCMember[], outputPath: string): void {
 
 function convertToLeadRecord(member: ICSCMember) {
   const profileId = member.profileUrl.match(/\/profile\/(\d+)/)?.[1] || 'unknown';
-  return {
+  const record: Record<string, unknown> = {
     core: {
-      source_id: SOURCE_ID,
+      source_id: config.source_id,
       entity_type: "person" as const,
       scraped_at: member.scrapedAt,
       raw_url: member.profileUrl,
-      primary_key: `${SOURCE_ID}:profile:${profileId}`,
+      primary_key: "", // Will be set below
     },
     person: {
       full_name: member.name,
@@ -415,10 +429,16 @@ function convertToLeadRecord(member: ICSCMember) {
       location: member.state ? { state: member.state, country: "USA" } : undefined,
     },
     context: {
+      profile_id: profileId, // Required for primary key generation
       business_type: member.businessType || undefined,
       state: member.state || undefined,
     },
   };
+
+  // Generate primary key using strategy from source.yaml
+  (record.core as Record<string, unknown>).primary_key = generatePrimaryKey(config, record, member.profileUrl);
+
+  return record;
 }
 
 // =============================================================================
@@ -435,7 +455,7 @@ async function main() {
   console.log(`States to scrape: ${REGIONS.length}`);
   console.log();
 
-  ensureOutputDir();
+  ensureOutputDirLocal();
 
   // Load progress
   let progress = loadProgress();
@@ -570,13 +590,13 @@ async function main() {
 
     // Save final output as JSONL
     const records = uniqueMembers.map(m => JSON.stringify(convertToLeadRecord(m)));
-    fs.writeFileSync(LEADS_FILE, records.join('\n') + '\n');
+    fs.writeFileSync(paths.leadsFile, records.join('\n') + '\n');
 
     // Save run.json
     const endTime = new Date();
     const runData = {
-      source_id: SOURCE_ID,
-      run_id: `${SOURCE_ID}:${startTime.toISOString()}`,
+      source_id: config.source_id,
+      run_id: `${config.source_id}:${startTime.toISOString()}`,
       started_at: startTime.toISOString(),
       ended_at: endTime.toISOString(),
       records_found: allMembers.length,
@@ -584,7 +604,10 @@ async function main() {
       records_written: uniqueMembers.length,
       error_count: 0,
     };
-    fs.writeFileSync(RUN_FILE, JSON.stringify(runData, null, 2));
+    fs.writeFileSync(paths.runFile, JSON.stringify(runData, null, 2));
+
+    // Update data_as_of in source.yaml
+    updateDataAsOf(__dirname);
 
     // Summary
     console.log('\n' + '='.repeat(60));
@@ -612,8 +635,8 @@ async function main() {
     }
 
     console.log(`\nOutput saved:`);
-    console.log(`  JSONL: ${LEADS_FILE}`);
-    console.log(`  Run: ${RUN_FILE}`);
+    console.log(`  JSONL: ${paths.leadsFile}`);
+    console.log(`  Run: ${paths.runFile}`);
 
   } catch (error) {
     console.error('\nError:', error);
@@ -621,7 +644,7 @@ async function main() {
     // Save whatever we have
     if (allMembers.length > 0) {
       const timestamp = new Date().toISOString().split('T')[0];
-      const jsonPath = path.join(OUTPUT_DIR, `icsc-members-full-partial-${timestamp}.json`);
+      const jsonPath = path.join(paths.outputDir, `icsc-members-full-partial-${timestamp}.json`);
       saveJson(allMembers, jsonPath);
       console.log(`\nPartial results saved to: ${jsonPath}`);
     }
