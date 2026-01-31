@@ -1,4 +1,4 @@
-# templates/source.yaml
+# template/source.yaml
 ## NOTE: DO NOT CHANGE THIS FILE. IT IS A TEMPLATE EXAMPLE
 
 source_id: "law/skadden"
@@ -17,7 +17,7 @@ start_urls:
 # how to run this scraper from this folder
 run_command: "npx tsx scraper.ts"
 
-refresh: "yearly" # "daily" | "weekly" | "monthly" | "quarterly"
+refresh: "yearly" # "daily" | "weekly" | "monthly" | "quarterly" | "yearly"
 
 # REQUIRED: deterministic strategy used to compute core.primary_key
 primary_key_strategy:

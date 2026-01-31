@@ -18,7 +18,7 @@ Failure to follow these rules means the output must be rejected.
 Your job is to:
 	•	take a website or dataset
 	•	extract structured data
-	•	emit records that conform to RULES.md
+	•	emit records that conform to DATA-RULES.md
 	•	fix issues when the pipeline rejects your output
 
 ⸻
@@ -41,7 +41,7 @@ You may NOT skip steps.
 
 When a new site is provided, you must create a folder with this structure:
 
-industries/<industry>/<segment>/<source_name>/
+data_in_progress/<industry>/<segment>/<source_name>/
   source.yaml
   scraper.ts
   output/
@@ -51,12 +51,16 @@ source.yaml (required fields)
 
 You must define:
 	•	source_id (globally unique, stable)
+	•	display_name (human-readable name)
 	•	entity_type (person, company, or both)
 	•	start_urls
 	•	run_command
-	•	refresh (daily, weekly, monthly)
+	•	refresh (daily, weekly, monthly, quarterly, yearly)
 	•	primary_key_strategy
 	•	expected_volume_range
+	•	data_as_of
+
+	
 
 ⸻
 
@@ -67,7 +71,7 @@ Scraper responsibilities
 The scraper is responsible ONLY for:
 	•	fetching pages
 	•	extracting data
-	•	mapping extracted data to the contract in RULES.md
+	•	mapping extracted data to the contract in DATA-RULES.md
 	•	writing output files
 
 The scraper must NOT:
@@ -91,9 +95,10 @@ leads.jsonl rules
 	•	One JSON object per line
 	•	Each object must include:
 	•	core
+	•	person (if entity_type is "person") OR company (if entity_type is "company")
 	•	contact
-	•	whatever context you can fine
-	•	Structure must conform to RULES.md
+	•	whatever context you can find
+	•	Structure must conform to DATA-RULES.md
 
 If you cannot populate a field, omit it or leave the object empty.
 Do NOT invent data.
@@ -195,7 +200,7 @@ Do not “work around” failures.
 
 A source is considered complete only when:
 	•	scraper runs cleanly
-	•	output conforms to RULES.md
+	•	output conforms to DATA-RULES.md
 	•	Quality Gate passes
 	•	review sample is generated
 	•	human approval is received
