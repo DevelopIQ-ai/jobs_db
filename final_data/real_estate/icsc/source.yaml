@@ -1,0 +1,8 @@
+source_id: real_estate/icsc
+display_name: ICSC Members (Owner/Developer)
+entity_type: person
+data_as_of: "2026-01-30"
+run_command: npx tsx scraper.ts
+primary_key_strategy: "real_estate/icsc:profile:{profile_id}"
+refresh_frequency: monthly
+requires_login: true

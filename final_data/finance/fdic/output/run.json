@@ -1,0 +1,10 @@
+{
+  "source_id": "finance/fdic",
+  "run_id": "run_convert_1769813560414",
+  "started_at": "2026-01-30T22:52:40.390Z",
+  "ended_at": "2026-01-30T22:52:40.414Z",
+  "records_found": 4338,
+  "records_valid": 4338,
+  "records_written": 4338,
+  "error_count": 0
+}

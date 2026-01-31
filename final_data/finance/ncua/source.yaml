@@ -1,0 +1,25 @@
+source_id: "finance/ncua"
+display_name: "NCUA Credit Unions"
+entity_type: "company"
+data_as_of: "2026-01-30"
+
+start_urls:
+  - "https://ncua.gov/analysis/credit-union-corporate-call-report-data"
+
+run_command: "npx tsx scraper.ts"
+
+refresh: "quarterly"
+
+primary_key_strategy:
+  type: "stable_id"
+  stable_id_context_path: ["cu_number"]
+
+expected_volume_range:
+  min: 4000
+  max: 5000
+
+notes: |
+  Parses NCUA Call Report data files (FOICU.txt, FS220.txt, FS220A.txt).
+  Requires downloading and extracting the quarterly data ZIP first.
+  CU Number is the stable unique identifier.
+  Data includes assets, member counts, and employee counts.

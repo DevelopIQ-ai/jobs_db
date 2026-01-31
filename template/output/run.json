@@ -1,0 +1,10 @@
+{
+    "source_id": "law/skadden",
+    "run_id": "run_1706654321123",
+    "started_at": "2026-01-30T22:00:00Z",
+    "ended_at": "2026-01-30T22:01:12Z",
+    "records_found": 245,
+    "records_valid": 240,
+    "records_written": 240,
+    "error_count": 0
+  }

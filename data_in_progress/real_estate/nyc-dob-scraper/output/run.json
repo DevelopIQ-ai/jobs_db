@@ -1,0 +1,10 @@
+{
+  "source_id": "real_estate/nyc_dob",
+  "run_id": "run_1769815419753",
+  "started_at": "2026-01-30T21:32:42.208Z",
+  "ended_at": "2026-01-30T23:23:39.753Z",
+  "records_found": 54310,
+  "records_valid": 54308,
+  "records_written": 54308,
+  "error_count": 2
+}

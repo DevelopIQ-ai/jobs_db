@@ -1,0 +1,44 @@
+# templates/source.yaml
+## NOTE: DO NOT CHANGE THIS FILE. IT IS A TEMPLATE EXAMPLE
+
+source_id: "law/skadden"
+display_name: "Skadden Professionals"
+entity_type: "person" # "person" | "company" | "both"
+
+# REQUIRED: Date of the data snapshot (YYYY-MM-DD)
+# - For live APIs: date the scrape was run
+# - For versioned data: data release date (e.g., "2025-Q3" -> "2025-09-30")
+# - For static data: last verification date
+data_as_of: "2026-01-30"
+
+start_urls:
+  - "https://www.skadden.com/professionals"
+
+# how to run this scraper from this folder
+run_command: "npx tsx scraper.ts"
+
+refresh: "yearly" # "daily" | "weekly" | "monthly" | "quarterly"
+
+# REQUIRED: deterministic strategy used to compute core.primary_key
+primary_key_strategy:
+  type: "url"   # "stable_id" | "url" | "url_fingerprint" | "fingerprint"
+  # for type=stable_id, specify the path in context, like ["cert"] or ["cu_number"]
+  stable_id_context_path: null
+  # for type=url or url_fingerprint, specify which URL field is canonical
+  canonical_url_field: "core.raw_url" # "core.raw_url" | "person.profile_url" | "company.profile_url"
+  # for fingerprinting (url_fingerprint or fingerprint) specify input fields (best effort)
+  fingerprint_fields:
+    - "core.raw_url"
+    - "person.full_name"
+    - "person.title"
+    - "person.company_name"
+    - "contact.location.city"
+    - "contact.location.state"
+    - "contact.email"
+
+expected_volume_range:
+  min: 100
+  max: 10000
+
+notes: |
+  Anything special about this source (rate limits, bot protection, pagination quirks).

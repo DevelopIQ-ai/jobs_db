@@ -1,0 +1,24 @@
+source_id: "investors/vcsheet"
+display_name: "VCSheet Fund Directory"
+entity_type: "company"
+data_as_of: "2026-01-31"
+
+start_urls:
+  - "https://www.vcsheet.com/funds"
+
+run_command: "npx tsx scraper.ts"
+
+refresh: "monthly"
+
+primary_key_strategy:
+  type: "url"
+  canonical_url_field: "core.raw_url"
+
+expected_volume_range:
+  min: 500
+  max: 2000
+
+notes: |
+  VCSheet.com directory of venture capital funds.
+  Uses infinite scroll - requires Playwright.
+  Rate limited to ~2s between requests.

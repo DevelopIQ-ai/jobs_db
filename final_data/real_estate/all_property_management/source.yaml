@@ -1,0 +1,7 @@
+source_id: real_estate/all_property_management
+display_name: AllPropertyManagement.com
+entity_type: company
+data_as_of: "2026-01-30"
+run_command: npx tsx scraper.ts
+primary_key_strategy: "real_estate/all_property_management:id:{id}"
+refresh_frequency: monthly

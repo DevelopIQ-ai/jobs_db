@@ -1,0 +1,7 @@
+source_id: real_estate/nyc_dob_bis
+display_name: NYC DOB BIS Permits (Legacy)
+entity_type: mixed
+data_as_of: "2026-01-31"
+run_command: npx tsx scraper.ts
+primary_key_strategy: "real_estate/nyc_dob_bis:job:{job_number}"
+refresh_frequency: weekly
