@@ -1,23 +1,17 @@
-source_id: "tech_founders/yc"
-display_name: "Y Combinator Founders"
-entity_type: "person"
-data_as_of: "2026-01-31"
-
-start_urls:
+"source_id": "tech_founders/yc"
+"display_name": "Y Combinator Founders"
+"entity_type": "person"
+"data_as_of": "2026-02-01"
+"start_urls":
   - "https://www.ycombinator.com/companies"
-
-run_command: "npx tsx scraper.ts"
-refresh: "monthly"
-
-primary_key_strategy:
-  type: "fingerprint"
-  fingerprint_fields:
+"run_command": "npx tsx scraper.ts"
+"refresh": "monthly"
+"primary_key_strategy":
+  "type": "fingerprint"
+  "fingerprint_fields":
     - "context.company_slug"
     - "person.full_name"
-
-expected_volume_range:
-  min: 10000
-  max: 20000
-
-notes: |
-  Scrapes YC company directory for founder information.
+"expected_volume_range":
+  "min": 10000
+  "max": 20000
+"notes": "Scrapes YC company directory for founder information.\n"
