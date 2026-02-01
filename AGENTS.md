@@ -172,6 +172,18 @@ The scraper must NOT:
 	•	guess missing information
 	•	hardcode source_id, entity_type, or other config values
 
+Scraping approach priority (use the simplest approach that works):
+	1.	**Direct HTTP requests** (fetch/axios) - Always try this first
+	2.	**API endpoints** - Check for JSON APIs the site uses internally
+	3.	**Playwright/browser automation** - Last resort only when the above fail
+
+Use Playwright only when:
+	•	The site requires JavaScript rendering with no API alternative
+	•	Authentication requires browser interaction
+	•	Content is loaded dynamically with no fetchable endpoint
+
+Browser automation is slower, more fragile, and harder to maintain. Exhaust simpler options first.
+
 Using lib/source-config.ts (Required)
 
 Every scraper MUST use the shared utility to read configuration.
