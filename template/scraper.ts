@@ -69,6 +69,13 @@ async function main() {
     records_valid: 0,
     records_written: 0,
     error_count: 0,
+    errors: [] as Array<{
+      type: "rate_limit" | "http_error" | "parse_error" | "timeout" | "other";
+      url?: string;
+      message: string;
+      attempts?: number;
+      skipped_records?: number;
+    }>,
   };
 
   // Open leads file for writing

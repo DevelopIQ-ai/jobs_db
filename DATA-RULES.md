@@ -191,9 +191,10 @@ This fallback should be rare.
 Every scraper must output:
 
 output/
-  leads.jsonl          // REQUIRED
-  run.json             // REQUIRED
-  scrape-progress.json // OPTIONAL
+  leads.jsonl              // REQUIRED
+  run.json                 // REQUIRED
+  scrape-progress.json     // OPTIONAL (for resumable scrapes, format is scraper-specific)
+  process_documentation.txt // OPTIONAL (agent documents debugging attempts here)
 
 run.json must include
 
@@ -205,8 +206,32 @@ run.json must include
   "records_found": 0,
   "records_valid": 0,
   "records_written": 0,
-  "error_count": 0
+  "error_count": 0,
+  "errors": []  // Only unrecoverable errors after genuine fix attempts
 }
+
+errors array format (for unrecoverable errors only)
+
+{
+  "errors": [
+    {
+      "type": "rate_limit" | "http_error" | "parse_error" | "timeout" | "other",
+      "url": "https://example.com/page/123",
+      "message": "429 Too Many Requests - retried 3 times with backoff",
+      "attempts": 3,
+      "skipped_records": 15
+    }
+  ]
+}
+
+process_documentation.txt
+
+When encountering errors during scraping, the agent should:
+1. Attempt to fix the scraper to resolve the error
+2. Document each attempt and outcome in process_documentation.txt
+3. Only log truly unrecoverable errors to run.json after exhausting options
+
+This file serves as a debugging journal for future reference.
 
 ⸻
 

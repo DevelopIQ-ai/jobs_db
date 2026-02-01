@@ -1,0 +1,11 @@
+# Process Documentation
+
+Document your debugging attempts here as you work through errors.
+
+Format:
+---
+[Timestamp] Issue: <description>
+Attempted: <what you tried>
+Outcome: <result>
+---
+

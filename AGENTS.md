@@ -86,6 +86,10 @@ data_in_progress/<industry>/<source_name>/
   README.md
 ```
 
+Naming conventions:
+	•	`<industry>` and `<source_name>` must be lowercase with underscores (e.g., `real_estate`, `nyc_dob`)
+	•	No spaces, hyphens, or special characters
+
 source.yaml (complete example)
 
 ```yaml
@@ -266,6 +270,7 @@ async function main() {
     records_valid: records.length,
     records_written: records.length,
     error_count: 0,
+    errors: [],  // Only populate with unrecoverable errors
   };
   fs.writeFileSync(paths.runFile, JSON.stringify(runJson, null, 2));
 
@@ -286,10 +291,17 @@ The scraper must write the following files:
 
 ```
 output/
-  leads.jsonl          // REQUIRED
-  run.json             // REQUIRED
-  scrape-progress.json // OPTIONAL (for resumable scrapes)
+  leads.jsonl              // REQUIRED
+  run.json                 // REQUIRED
+  scrape-progress.json     // OPTIONAL (for resumable scrapes)
+  process_documentation.txt // OPTIONAL (debugging journal)
 ```
+
+Error handling behavior:
+	•	When you encounter errors (404s, rate limits, parse failures), try to fix the scraper
+	•	Document each attempt and outcome in process_documentation.txt
+	•	Only log truly unrecoverable errors to run.json after exhausting options
+	•	See DATA-RULES.md for the detailed error format in run.json
 
 leads.jsonl rules:
 	•	One JSON object per line
@@ -372,6 +384,8 @@ This file must contain:
 	•	key fields visible (name, title/company, contact, raw_url)
 
 You must stop here and wait for approval.
+
+After approval, a human will move the entire folder (including output/) from `data_in_progress/` to `final_data/`. Do not move it yourself.
 
 ⸻
 
