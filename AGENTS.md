@@ -175,7 +175,8 @@ The scraper must NOT:
 Scraping approach priority (use the simplest approach that works):
 	1.	**Direct HTTP requests** (fetch/axios) - Always try this first
 	2.	**API endpoints** - Check for JSON APIs the site uses internally
-	3.	**Playwright/browser automation** - Last resort only when the above fail
+	3.	**Innovate** - Find creative solutions (cached data, sitemaps, RSS feeds, etc.)
+	4.	**Playwright/browser automation** - WORST CASE ONLY
 
 Use Playwright only when:
 	•	The site requires JavaScript rendering with no API alternative
