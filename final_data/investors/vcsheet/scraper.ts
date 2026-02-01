@@ -222,7 +222,7 @@ async function main() {
 
     let validCount = 0;
     let errorCount = 0;
-    const writeStream = fs.createWriteStream(paths.leadsFile, { flags: 'a' });
+    const writeStream = fs.createWriteStream(paths.leadsFile);
 
     for (let i = 0; i < toProcess.length; i++) {
       const slug = toProcess[i];
