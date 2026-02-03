@@ -24,6 +24,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import {
   loadSourceConfig,
   updateDataAsOf,
@@ -151,31 +152,18 @@ const PROPERTY_TYPE_CATEGORIES: Record<string, PropertyTypeCategory> = {
 
 const API_BASE = 'https://api.allpropertymanagement.com/public/v1';
 
-async function fetchWithRetry<T>(url: string, retries = 3): Promise<T> {
+function fetchWithCurl<T>(url: string, retries = 3): T {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          // Rate limited - wait longer
-          const waitTime = 5000 * (i + 1);
-          console.log(`  Rate limited, waiting ${waitTime / 1000}s...`);
-          await delay(waitTime);
-          continue;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
+      const result = execSync(
+        `curl -s "${url}" -H "Accept: application/json" -H "User-Agent: Mozilla/5.0" --max-time 30`,
+        { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 }
+      );
+      return JSON.parse(result);
+    } catch (error: any) {
       if (i === retries - 1) throw error;
-      await delay(1000 * (i + 1));
+      // Wait before retry
+      execSync(`sleep ${i + 1}`);
     }
   }
   throw new Error('Max retries exceeded');
@@ -189,9 +177,9 @@ async function delay(ms: number): Promise<void> {
 // Scraping Functions
 // =============================================================================
 
-async function getAllManagerIds(): Promise<number[]> {
+function getAllManagerIds(): number[] {
   console.log('Fetching all manager IDs...');
-  const data = await fetchWithRetry<{ Id: number }[]>(`${API_BASE}/propertyManagers`);
+  const data = fetchWithCurl<{ Id: number }[]>(`${API_BASE}/propertyManagers`);
   const ids = data.map(m => m.Id);
   console.log(`  Found ${ids.length} managers`);
   return ids;
@@ -206,9 +194,9 @@ function categorizePropertyType(id: number, name: string): string {
   return 'other';
 }
 
-async function getManagerProfile(id: number): Promise<PropertyManager | null> {
+function getManagerProfile(id: number): PropertyManager | null {
   try {
-    const data = await fetchWithRetry<any>(`${API_BASE}/propertyManagers/${id}`);
+    const data = fetchWithCurl<any>(`${API_BASE}/propertyManagers/${id}`);
 
     const propertyTypes = (data.PropertyTypes || []).map((pt: any) => ({
       id: pt.Id,
@@ -250,31 +238,25 @@ async function getManagerProfile(id: number): Promise<PropertyManager | null> {
   }
 }
 
-async function scrapeAllManagers(
+function scrapeAllManagers(
   ids: number[],
-  batchSize: number = 20,
   onProgress?: (completed: number, total: number) => void
-): Promise<PropertyManager[]> {
+): PropertyManager[] {
   const managers: PropertyManager[] = [];
 
-  for (let i = 0; i < ids.length; i += batchSize) {
-    const batch = ids.slice(i, i + batchSize);
-    const results = await Promise.all(batch.map(id => getManagerProfile(id)));
-
-    for (const result of results) {
-      if (result) {
-        managers.push(result);
-      }
+  for (let i = 0; i < ids.length; i++) {
+    const result = getManagerProfile(ids[i]);
+    if (result) {
+      managers.push(result);
     }
 
-    if (onProgress) {
-      onProgress(Math.min(i + batchSize, ids.length), ids.length);
+    if (onProgress && (i + 1) % 50 === 0) {
+      onProgress(i + 1, ids.length);
     }
+  }
 
-    // Small delay between batches
-    if (i + batchSize < ids.length) {
-      await delay(100);
-    }
+  if (onProgress) {
+    onProgress(ids.length, ids.length);
   }
 
   return managers;
@@ -412,7 +394,7 @@ async function main() {
   console.log();
 
   // Get all manager IDs
-  let ids = await getAllManagerIds();
+  let ids = getAllManagerIds();
   const recordsFound = ids.length;
 
   if (testMode) {
@@ -423,7 +405,7 @@ async function main() {
   // Scrape all profiles
   console.log('\nScraping profiles...');
 
-  const allManagers = await scrapeAllManagers(ids, 20, (completed, total) => {
+  const allManagers = scrapeAllManagers(ids, (completed, total) => {
     const elapsed = (Date.now() - startTime) / 1000;
     const rate = completed / elapsed;
     const remaining = (total - completed) / rate;
