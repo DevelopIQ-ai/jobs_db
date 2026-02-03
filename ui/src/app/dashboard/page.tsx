@@ -88,14 +88,8 @@ function getIndustryColor(industry: string): string {
   return colors[industry] || "bg-gray-100 text-gray-800";
 }
 
-function getStatusLabel(status: "final" | "in_progress"): string {
-  return status === "final" ? "Final" : "In Progress";
-}
-
-function getStatusColor(status: "final" | "in_progress"): string {
-  return status === "final"
-    ? "bg-green-100 text-green-800 border-green-200"
-    : "bg-yellow-100 text-yellow-800 border-yellow-200";
+function getStatusDotColor(status: "final" | "in_progress"): string {
+  return status === "final" ? "bg-green-500" : "bg-[#E85D04]";
 }
 
 function getReadmeDescription(readme: string): string {
@@ -110,75 +104,59 @@ function getReadmeDescription(readme: string): string {
 }
 
 function DatasetCard({ dataset, delay }: { dataset: Dataset; delay: number }) {
-  const [expanded, setExpanded] = useState(false);
   const description = getReadmeDescription(dataset.readme);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.2 }}
-      className="bg-white border border-gray-200 hover:border-gray-400 transition-colors"
-    >
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <div className="flex gap-2 mb-2">
-              <span className={`inline-block text-xs px-2 py-1 rounded ${getIndustryColor(dataset.industry)}`}>
-                {getIndustryLabel(dataset.industry)}
-              </span>
-              <span className={`inline-block text-xs px-2 py-1 rounded border ${getStatusColor(dataset.status)}`}>
-                {getStatusLabel(dataset.status)}
-              </span>
-            </div>
-            <h3 className="font-bold text-lg">{dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}</h3>
-            <p className="text-gray-500 text-sm font-mono">{dataset.source_id}</p>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">{formatNumber(dataset.leadsCount)}</div>
-            <div className="text-xs text-gray-500">records</div>
-          </div>
-        </div>
-
-        {description && (
-          <p className="text-gray-600 text-sm mb-4">{description}</p>
-        )}
-
-        {dataset.run && (
-          <div className="grid grid-cols-3 gap-4 text-sm">
+    <Link href={`/dashboard/${dataset.industry}/${dataset.scraper}`}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.2 }}
+        className="bg-white border border-gray-200 hover:border-[#E85D04] hover:shadow-md transition-all cursor-pointer"
+      >
+        <div className="p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <div className="text-gray-500 text-xs mb-1">Valid</div>
-              <div className="font-medium">{formatNumber(dataset.run.records_valid)}</div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-block w-2 h-2 rounded-full ${getStatusDotColor(dataset.status)}`} title={dataset.status === "final" ? "Final" : "In Progress"} />
+                <span className={`inline-block text-xs px-2 py-1 rounded ${getIndustryColor(dataset.industry)}`}>
+                  {getIndustryLabel(dataset.industry)}
+                </span>
+              </div>
+              <h3 className="font-bold text-lg">{dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}</h3>
+              <p className="text-gray-500 text-sm font-mono">{dataset.source_id}</p>
             </div>
-            <div>
-              <div className="text-gray-500 text-xs mb-1">Errors</div>
-              <div className={`font-medium ${dataset.run.error_count > 0 ? "text-red-600" : "text-gray-900"}`}>
-                {formatNumber(dataset.run.error_count)}
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">{formatNumber(dataset.leadsCount)}</div>
+              <div className="text-xs text-gray-500">records</div>
+            </div>
+          </div>
+
+          {description && (
+            <p className="text-gray-600 text-sm mb-4">{description}</p>
+          )}
+
+          {dataset.run && (
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="text-gray-500 text-xs mb-1">Valid</div>
+                <div className="font-medium">{formatNumber(dataset.run.records_valid)}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-1">Errors</div>
+                <div className={`font-medium ${dataset.run.error_count > 0 ? "text-red-600" : "text-gray-900"}`}>
+                  {formatNumber(dataset.run.error_count)}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-1">Last Run</div>
+                <div className="font-medium">{formatDate(dataset.run.ended_at)}</div>
               </div>
             </div>
-            <div>
-              <div className="text-gray-500 text-xs mb-1">Last Run</div>
-              <div className="font-medium">{formatDate(dataset.run.ended_at)}</div>
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="mt-4 text-xs text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          {expanded ? "Hide README" : "Show README"}
-        </button>
-      </div>
-
-      {expanded && (
-        <div className="border-t border-gray-200 p-6 bg-gray-50">
-          <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto">
-            {dataset.readme}
-          </pre>
+          )}
         </div>
-      )}
-    </motion.div>
+      </motion.div>
+    </Link>
   );
 }
 
