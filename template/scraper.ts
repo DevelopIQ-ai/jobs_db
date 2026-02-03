@@ -24,7 +24,7 @@ import {
   generatePrimaryKey,
   getRecordEntityType,
   SourceConfig,
-} from "../../../lib/source-config";
+} from "../lib/source-config";
 
 // ============================================================================
 // Types - Customize these for your source
