@@ -23,14 +23,19 @@ interface LeadRecord {
   };
   company: {
     company_name: string;
-  };
-  contact: {
+    website?: string;
     location?: {
       city?: string;
       state?: string;
       zip?: string;
       country?: string;
     };
+  };
+  contact: {
+    email?: string;
+    phone?: string;
+    socials?: Array<{ platform: string; url: string }>;
+    [key: string]: unknown;
   };
   context: Record<string, unknown>;
 }
@@ -225,8 +230,6 @@ async function main() {
       },
       company: {
         company_name: cu.name,
-      },
-      contact: {
         location: {
           city: cu.city || undefined,
           state: cu.state || undefined,
@@ -234,6 +237,7 @@ async function main() {
           country: "USA",
         },
       },
+      contact: {},
       context: {
         cu_number: cu.cuNumber,
         street: cu.street || undefined,

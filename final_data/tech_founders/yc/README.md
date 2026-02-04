@@ -41,14 +41,14 @@ Each record in `leads.jsonl` follows the ScrappyPuffle data contract:
     "full_name": "Tony Xu",
     "title": "CEO",
     "company_name": "DoorDash",
-    "profile_url": "https://www.ycombinator.com/companies/doordash"
+    "profile_url": "https://www.ycombinator.com/companies/doordash",
+    "website": "https://doordash.com",
+    "location": { "city": "San Francisco", "state": "CA", "country": "USA" }
   },
   "contact": {
-    "website": "https://doordash.com",
     "socials": [
       { "platform": "linkedin", "url": "https://linkedin.com/in/tonyxu" }
-    ],
-    "location": { "city": "San Francisco", "state": "CA", "country": "USA" }
+    ]
   },
   "context": {
     "yc_batch": "S13",

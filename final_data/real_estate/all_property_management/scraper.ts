@@ -309,17 +309,15 @@ function convertToLeadRecord(pm: PropertyManager) {
     company: {
       company_name: pm.name,
       domain: extractDomain(undefined), // No website field in PropertyManager
-    },
-    contact: {
-      email: pm.email || undefined,
-      phone: undefined, // No phone field in PropertyManager
-      website: undefined, // No website field in PropertyManager
       location: {
         city: pm.city || undefined,
         state: pm.state || undefined,
         zip: pm.zip || undefined,
         country: "USA",
       },
+    },
+    contact: {
+      email: pm.email || undefined,
     },
     context: {
       id: pm.id, // Required for primary key generation

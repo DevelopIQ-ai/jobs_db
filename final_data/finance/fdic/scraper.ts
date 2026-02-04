@@ -48,8 +48,6 @@ interface LeadRecord {
   company: {
     company_name: string;
     domain?: string;
-  };
-  contact: {
     website?: string;
     location?: {
       city?: string;
@@ -57,6 +55,12 @@ interface LeadRecord {
       zip?: string;
       country?: string;
     };
+  };
+  contact: {
+    email?: string;
+    phone?: string;
+    socials?: Array<{ platform: string; url: string }>;
+    [key: string]: unknown;
   };
   context: Record<string, unknown>;
 }
@@ -168,8 +172,6 @@ function convertToLeadRecord(inst: Institution, fin: Financial | undefined, scra
     company: {
       company_name: inst.NAME || "",
       domain: extractDomain(website),
-    },
-    contact: {
       website: website ? (website.startsWith("http") ? website : `https://${website}`) : undefined,
       location: {
         city: inst.CITY || undefined,
@@ -178,6 +180,7 @@ function convertToLeadRecord(inst: Institution, fin: Financial | undefined, scra
         country: "USA",
       },
     },
+    contact: {},
     context: {
       cert: inst.CERT,
       address: inst.ADDRESS || undefined,

@@ -32,11 +32,11 @@ output/
     "primary_key": "real_estate/nyc_dob_bis:job:121332673"
   },
   "company": {
-    "company_name": "W29 534 HIGHLINE OWNERS, LLC"
+    "company_name": "W29 534 HIGHLINE OWNERS, LLC",
+    "location": { "city": "NEW YORK", "state": "NY", "zip": "10022", "country": "USA" }
   },
   "contact": {
-    "phone": "2127582089",
-    "location": { "city": "NEW YORK", "state": "NY", "zip": "10022", "country": "USA" }
+    "phone": "2127582089"
   },
   "context": {
     "job_number": "121332673",

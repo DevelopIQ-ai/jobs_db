@@ -85,6 +85,13 @@ person = {
   company_name?: string;
   profile_url?: string;     // canonical profile page
   name_raw?: string;        // unmodified source text
+  website?: string;         // full URL
+  location?: {
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
 }
 
 Rules
@@ -114,22 +121,7 @@ company = {
   founded_year?: number;
   profile_url?: string;
   name_raw?: string;
-}
-
-
-⸻
-
-6. Contact Section (Optional but Standardized)
-
-The contact block is shared across all entities.
-
-contact = {
-  email?: string;
-  phone?: string;
-  website?: string;   // full URL
-
-  socials?: SocialLink[];
-
+  website?: string;         // full URL
   location?: {
     city?: string;
     state?: string;
@@ -137,6 +129,22 @@ contact = {
     country?: string;
   };
 }
+
+
+⸻
+
+6. Contact Section (Required but Can Be Empty)
+
+The contact block contains direct contact methods only.
+
+contact = {
+  email?: string;
+  phone?: string;
+  socials?: SocialLink[];
+  [key: string]: unknown;  // Additional contact fields
+}
+
+Note: website and location have moved to the person/company sections.
 
 
 7. Context Section (Source-Specific Data)
@@ -275,8 +283,8 @@ primary_key_strategy:
   type: "fingerprint"
   fingerprint_fields:
     - "person.full_name"
-    - "contact.location.city"
-    - "contact.location.state"  # Generates: source_id:fp:abc123
+    - "person.location.city"
+    - "person.location.state"  # Generates: source_id:fp:abc123
 
 # Option 4: url_fingerprint - URL + hash for disambiguation
 primary_key_strategy:
@@ -342,8 +350,8 @@ This system does NOT:
 
 13. Mental Model (Read This Once)
 	•	core = identity + provenance
-	•	person/company = what the thing is
-	•	contact = how to reach it
+	•	person/company = what the thing is + where it is (website, location)
+	•	contact = direct contact methods (email, phone, socials)
 	•	context = why it matters
 
-If it doesn’t fit cleanly, it goes in context.
+If it doesn't fit cleanly, it goes in context.

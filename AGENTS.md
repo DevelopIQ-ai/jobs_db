@@ -143,8 +143,8 @@ primary_key_strategy:
   type: "fingerprint"
   fingerprint_fields:
     - "person.full_name"
-    - "contact.location.city"
-    - "contact.location.state"
+    - "person.location.city"
+    - "person.location.state"
 
 # Option 4: url_fingerprint - URL + hash for disambiguation
 primary_key_strategy:
@@ -261,8 +261,8 @@ async function main() {
   //     raw_url: rawUrl,
   //     primary_key: "", // Will be set below
   //   },
-  //   company: { company_name: "Example Corp" },
-  //   contact: { location: { city: "New York", state: "NY" } },
+  //   company: { company_name: "Example Corp", location: { city: "New York", state: "NY" } },
+  //   contact: {},
   //   context: { id: "123" }, // Include field needed for primary key
   // };
   // record.core.primary_key = generatePrimaryKey(config, record, rawUrl);
@@ -407,9 +407,9 @@ After approval, a human will move the entire folder (including output/) from `da
 | Section | Purpose | Examples |
 |---------|---------|----------|
 | core | identity + provenance | source_id, primary_key, scraped_at, raw_url |
-| person | who the person is | full_name, title, company_name |
-| company | what the company is | company_name, domain, industry |
-| contact | how to reach them | email, phone, location, socials |
+| person | who the person is + where they are | full_name, title, company_name, website, location |
+| company | what the company is + where it is | company_name, domain, industry, website, location |
+| contact | direct contact methods | email, phone, socials |
 | context | everything else | external IDs, metadata, source-specific fields |
 
 If data does not clearly belong in core/person/company/contact, it goes in context.

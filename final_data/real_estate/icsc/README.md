@@ -38,12 +38,12 @@ output/
     "full_name": "Andrea Aquadro",
     "title": "Principal",
     "company_name": "Wilson Dam Properties",
-    "profile_url": "https://www.icsc.com/member/profile/852078"
+    "profile_url": "https://www.icsc.com/member/profile/852078",
+    "location": { "city": "Birmingham", "state": "Alabama", "country": "USA" }
   },
   "contact": {
     "email": "andrea@example.com",
-    "phone": "555-123-4567",
-    "location": { "city": "Birmingham", "state": "Alabama", "country": "USA" }
+    "phone": "555-123-4567"
   },
   "context": {
     "business_type": "Owner/Developer",

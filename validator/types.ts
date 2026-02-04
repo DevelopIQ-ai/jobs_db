@@ -60,6 +60,13 @@ export interface PersonSection {
   company_name?: string;
   profile_url?: string;
   name_raw?: string;
+  website?: string;
+  location?: {
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
 }
 
 export interface CompanySection {
@@ -71,19 +78,20 @@ export interface CompanySection {
   founded_year?: number;
   profile_url?: string;
   name_raw?: string;
-}
-
-export interface ContactSection {
-  email?: string;
-  phone?: string;
   website?: string;
-  socials?: Array<{ platform: string; url: string }>;
   location?: {
     city?: string;
     state?: string;
     zip?: string;
     country?: string;
   };
+}
+
+export interface ContactSection {
+  email?: string;
+  phone?: string;
+  socials?: Array<{ platform: string; url: string }>;
+  [key: string]: unknown;  // Additional contact fields
 }
 
 export interface LeadRecord {

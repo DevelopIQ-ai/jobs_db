@@ -77,7 +77,7 @@ Mostly. The scraper reads from extracted text files (CSV-like format), not a liv
 
 2. **Multi-file joins**: Data comes from 3 files (FOICU, FS220, FS220A) that need to be joined on CU_NUMBER. Original handled this well.
 
-3. **No website/domain**: Unlike FDIC banks, credit unions don't have website URLs in this dataset. `contact.website` is omitted.
+3. **No website/domain**: Unlike FDIC banks, credit unions don't have website URLs in this dataset. `company.website` is omitted.
 
 ### What I kept
 

@@ -41,13 +41,13 @@ output/
   },
   "company": {
     "company_name": "Great North Property Management",
-    "domain": "greatnorth.net"
+    "domain": "greatnorth.net",
+    "website": "https://greatnorth.net",
+    "location": { "city": "Exeter", "state": "NH", "zip": "03833", "country": "USA" }
   },
   "contact": {
     "email": "justin.gargiulo@greatnorth.net",
-    "phone": "(800) 639-7309",
-    "website": "https://greatnorth.net",
-    "location": { "city": "Exeter", "state": "NH", "zip": "03833", "country": "USA" }
+    "phone": "(800) 639-7309"
   },
   "context": {
     "street": "3 Holland Way",

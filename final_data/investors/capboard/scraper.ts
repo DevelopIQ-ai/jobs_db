@@ -107,10 +107,10 @@ function convertToLeadRecord(inv: Investor) {
       company_name: inv.name,
       domain: extractDomain(inv.website),
       industry: inv.firmType || "Venture Capital",
+      website: inv.website || undefined,
     },
     contact: {
       email: inv.email || undefined,
-      website: inv.website || undefined,
       socials: socials.length > 0 ? socials : undefined,
     },
     context: {

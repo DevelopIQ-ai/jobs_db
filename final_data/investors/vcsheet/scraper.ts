@@ -165,12 +165,12 @@ async function scrapeFundProfile(page: Page, slug: string): Promise<string | nul
       company: {
         company_name: data.name || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
         industry: 'Venture Capital',
-        profile_url: url
+        profile_url: url,
+        location: parseLocation(data.location)
       },
       contact: {
         email: data.email || undefined,
         socials: socials.length > 0 ? socials : undefined,
-        location: parseLocation(data.location)
       },
       context: {
         slug,

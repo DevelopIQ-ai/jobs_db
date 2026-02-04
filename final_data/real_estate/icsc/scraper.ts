@@ -422,11 +422,11 @@ function convertToLeadRecord(member: ICSCMember) {
       title: member.title || undefined,
       company_name: member.company || undefined,
       profile_url: member.profileUrl,
+      location: member.state ? { state: member.state, country: "USA" } : undefined,
     },
     contact: {
       email: member.email || undefined,
       phone: member.phone || undefined,
-      location: member.state ? { state: member.state, country: "USA" } : undefined,
     },
     context: {
       profile_id: profileId, // Required for primary key generation

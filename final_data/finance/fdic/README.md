@@ -35,12 +35,11 @@ Each record in `leads.jsonl` follows the ScrappyPuffle data contract:
   },
   "company": {
     "company_name": "JPMorgan Chase Bank, National Association",
-    "domain": "jpmorganchase.com"
-  },
-  "contact": {
+    "domain": "jpmorganchase.com",
     "website": "https://www.jpmorganchase.com",
     "location": { "city": "Columbus", "state": "OH", "zip": "43240", "country": "USA" }
   },
+  "contact": {},
   "context": {
     "cert": 628,
     "total_assets_thousands": 3813431000,

@@ -93,15 +93,18 @@ interface LeadRecord {
     title?: string;
     company_name?: string;
     profile_url?: string;
-  };
-  contact: {
     website?: string;
-    socials?: { platform: string; url: string }[];
     location?: {
       city?: string;
       state?: string;
       country?: string;
     };
+  };
+  contact: {
+    email?: string;
+    phone?: string;
+    socials?: { platform: string; url: string }[];
+    [key: string]: unknown;
   };
   context: {
     company_slug: string;
@@ -432,11 +435,11 @@ function convertToLeadRecord(
       title: founder.title || undefined,
       company_name: company.name,
       profile_url: profileUrl,
+      website: company.website || undefined,
+      location: Object.keys(location).length > 0 ? location : undefined,
     },
     contact: {
-      website: company.website || undefined,
       socials: socials.length > 0 ? socials : undefined,
-      location: Object.keys(location).length > 0 ? location : undefined,
     },
     context: {
       company_slug: company.slug,

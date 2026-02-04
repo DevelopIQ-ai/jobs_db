@@ -472,6 +472,7 @@ function convertToLeadRecord(dev: Developer) {
 
   const isCompany = hasBusinessName;
   const rawUrl = buildRawUrl(dev);
+  const location = { city: "New York", state: "NY", zip: dev.zipCode || undefined, country: "USA" };
   const baseRecord: Record<string, unknown> = {
     core: {
       source_id: config.source_id,
@@ -482,7 +483,6 @@ function convertToLeadRecord(dev: Developer) {
     },
     contact: {
       phone: dev.ownerPhone || undefined,
-      location: { city: "New York", state: "NY", zip: dev.zipCode || undefined, country: "USA" },
     },
     context: {
       job: dev.jobNumber, // Required for primary key generation
@@ -505,9 +505,9 @@ function convertToLeadRecord(dev: Developer) {
 
   // Add entity-specific section
   if (isCompany) {
-    baseRecord.company = { company_name: displayName };
+    baseRecord.company = { company_name: displayName, location };
   } else {
-    baseRecord.person = { full_name: displayName, company_name: dev.ownerBusinessName || undefined };
+    baseRecord.person = { full_name: displayName, company_name: dev.ownerBusinessName || undefined, location };
   }
 
   // Generate primary key using strategy from source.yaml

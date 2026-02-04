@@ -40,7 +40,7 @@ For each new scraper, create:
 data_in_progress/<industry>/<source_name>/
 ├── source.yaml    # Metadata (source_id, entity_type, etc.)
 ├── scraper.ts     # Your scraping code
-├── output/        # Will contain leads.jsonl and run.json
+├── output/        # Will contain leads.jsonl, run.json, and process_documentation.txt
 └── README.md      # Notes about the source
 ```
 

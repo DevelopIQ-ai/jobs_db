@@ -35,10 +35,10 @@ output/
   "company": {
     "company_name": "Black Pearls VC",
     "domain": "blackpearls.vc",
-    "industry": "VC"
+    "industry": "VC",
+    "website": "https://blackpearls.vc"
   },
   "contact": {
-    "website": "https://blackpearls.vc",
     "socials": [
       { "platform": "linkedin", "url": "https://www.linkedin.com/company/black-pearls-vc/" }
     ]

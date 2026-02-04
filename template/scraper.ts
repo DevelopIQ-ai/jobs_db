@@ -38,6 +38,7 @@ interface RawRecord {
   company?: string;
   email?: string;
   phone?: string;
+  website?: string;
   city?: string;
   state?: string;
   // ... add fields specific to your source
@@ -159,6 +160,12 @@ function transformRecord(raw: RawRecord, config: SourceConfig) {
   // For entity_type="both", you'd determine this per-record
   const entityType = getRecordEntityType(config);
 
+  // Build location object if we have city or state
+  const location = (raw.city || raw.state) ? {
+    city: raw.city,
+    state: raw.state,
+  } : undefined;
+
   // Build the record structure per DATA-RULES.md
   const record: Record<string, unknown> = {
     core: {
@@ -171,10 +178,7 @@ function transformRecord(raw: RawRecord, config: SourceConfig) {
     contact: {
       email: raw.email || undefined,
       phone: raw.phone || undefined,
-      location: (raw.city || raw.state) ? {
-        city: raw.city,
-        state: raw.state,
-      } : undefined,
+      // Note: website and location go in person/company, not contact
     },
     context: {
       // Add source-specific fields here
@@ -182,16 +186,20 @@ function transformRecord(raw: RawRecord, config: SourceConfig) {
     },
   };
 
-  // Add entity section based on type
+  // Add entity section based on type (includes website and location)
   if (entityType === "person") {
     record.person = {
       full_name: raw.name,
       title: raw.title,
       company_name: raw.company,
+      website: raw.website || undefined,
+      location,
     };
   } else {
     record.company = {
       company_name: raw.name,
+      website: raw.website || undefined,
+      location,
     };
   }
 
