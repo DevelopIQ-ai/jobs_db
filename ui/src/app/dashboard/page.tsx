@@ -30,24 +30,18 @@ function Puffle({ className = "" }: { className?: string }) {
     <svg viewBox="0 0 120 100" className={className} fill="none">
       <path
         d="M60 90 C25 90 15 60 20 45 C25 25 45 15 60 15 C75 15 95 25 100 45 C105 60 95 90 60 90Z"
-        fill="#E85D04"
-        stroke="#1a1a1a"
-        strokeWidth="2"
+        fill="#FF6B00"
+        stroke="#FF853380"
+        strokeWidth="1.5"
       />
-      <ellipse cx="42" cy="40" rx="12" ry="10" fill="#FDBA74" opacity="0.5" />
-      <ellipse cx="45" cy="50" rx="8" ry="10" fill="white" stroke="#1a1a1a" strokeWidth="1.5" />
-      <ellipse cx="72" cy="50" rx="8" ry="10" fill="white" stroke="#1a1a1a" strokeWidth="1.5" />
-      <circle cx="47" cy="52" r="4" fill="#1a1a1a" />
-      <circle cx="74" cy="52" r="4" fill="#1a1a1a" />
-      <circle cx="48" cy="50" r="1.5" fill="white" />
-      <circle cx="75" cy="50" r="1.5" fill="white" />
-      <path
-        d="M50 18 Q55 5 60 15 Q62 8 65 18"
-        fill="none"
-        stroke="#1a1a1a"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
+      <ellipse cx="42" cy="40" rx="12" ry="10" fill="#FF8533" opacity="0.25" />
+      <ellipse cx="45" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
+      <ellipse cx="72" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
+      <circle cx="47" cy="52" r="4" fill="#0C0C14" />
+      <circle cx="74" cy="52" r="4" fill="#0C0C14" />
+      <circle cx="48.5" cy="50.5" r="1.5" fill="white" />
+      <circle cx="75.5" cy="50.5" r="1.5" fill="white" />
+      <path d="M50 18 Q55 5 60 15 Q62 8 65 18" fill="none" stroke="#FF8533" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -74,22 +68,18 @@ function getIndustryLabel(industry: string): string {
     real_estate: "Real Estate",
     tech_founders: "Tech Founders",
   };
-  return labels[industry] || industry;
+  return labels[industry] || industry.replace(/_/g, " ");
 }
 
-function getIndustryColor(industry: string): string {
+function getIndustryAccent(industry: string): string {
   const colors: Record<string, string> = {
-    finance: "bg-emerald-100 text-emerald-800",
-    investors: "bg-purple-100 text-purple-800",
-    law: "bg-blue-100 text-blue-800",
-    real_estate: "bg-amber-100 text-amber-800",
-    tech_founders: "bg-rose-100 text-rose-800",
+    finance: "#00E676",
+    investors: "#BB86FC",
+    law: "#64B5F6",
+    real_estate: "#FFB74D",
+    tech_founders: "#FF8A80",
   };
-  return colors[industry] || "bg-gray-100 text-gray-800";
-}
-
-function getStatusDotColor(status: "final" | "in_progress"): string {
-  return status === "final" ? "bg-green-500" : "bg-[#E85D04]";
+  return colors[industry] || "#FF6B00";
 }
 
 function getReadmeDescription(readme: string): string {
@@ -105,52 +95,100 @@ function getReadmeDescription(readme: string): string {
 
 function DatasetCard({ dataset, delay }: { dataset: Dataset; delay: number }) {
   const description = getReadmeDescription(dataset.readme);
+  const accentColor = getIndustryAccent(dataset.industry);
+  const isFinal = dataset.status === "final";
 
   return (
     <Link href={`/dashboard/${dataset.industry}/${dataset.scraper}`}>
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay, duration: 0.2 }}
-        className="bg-white border border-gray-200 hover:border-[#E85D04] hover:shadow-md transition-all cursor-pointer"
+        className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--accent)] transition-all cursor-pointer group relative overflow-hidden"
       >
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`inline-block w-2 h-2 rounded-full ${getStatusDotColor(dataset.status)}`} title={dataset.status === "final" ? "Final" : "In Progress"} />
-                <span className={`inline-block text-xs px-2 py-1 rounded ${getIndustryColor(dataset.industry)}`}>
-                  {getIndustryLabel(dataset.industry)}
-                </span>
-              </div>
-              <h3 className="font-bold text-lg">{dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}</h3>
-              <p className="text-gray-500 text-sm font-mono">{dataset.source_id}</p>
+        {/* top accent strip */}
+        <div
+          className="h-[2px] w-full"
+          style={{ background: accentColor }}
+        />
+
+        <div className="p-5">
+          {/* status + industry + count */}
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${isFinal ? "pulse-dot" : ""}`}
+                style={{ color: isFinal ? "var(--success)" : "var(--accent)", backgroundColor: isFinal ? "var(--success)" : "var(--accent)" }}
+                title={isFinal ? "Final" : "In Progress"}
+              />
+              <span
+                className="text-[10px] uppercase tracking-[0.15em] px-2 py-0.5 border"
+                style={{
+                  color: accentColor,
+                  borderColor: accentColor + "40",
+                  backgroundColor: accentColor + "10",
+                }}
+              >
+                {getIndustryLabel(dataset.industry)}
+              </span>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">{formatNumber(dataset.leadsCount)}</div>
-              <div className="text-xs text-gray-500">records</div>
+              <div className="text-2xl font-bold text-[var(--accent)]">
+                {formatNumber(dataset.leadsCount)}
+              </div>
+              <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
+                records
+              </div>
             </div>
           </div>
 
+          {/* name + source id */}
+          <h3 className="font-bold text-base mb-1 group-hover:text-[var(--accent)] transition-colors">
+            {dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}
+          </h3>
+          <p className="text-[var(--text-muted)] text-xs font-mono mb-3">
+            {dataset.source_id}
+          </p>
+
+          {/* description */}
           {description && (
-            <p className="text-gray-600 text-sm mb-4">{description}</p>
+            <p className="text-[var(--text-secondary)] text-xs mb-4 leading-relaxed line-clamp-2">
+              {description}
+            </p>
           )}
 
+          {/* stats row */}
           {dataset.run && (
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-3 gap-4 pt-3 border-t border-[var(--border)]">
               <div>
-                <div className="text-gray-500 text-xs mb-1">Valid</div>
-                <div className="font-medium">{formatNumber(dataset.run.records_valid)}</div>
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
+                  Valid
+                </div>
+                <div className="text-sm font-medium text-[var(--success)]">
+                  {formatNumber(dataset.run.records_valid)}
+                </div>
               </div>
               <div>
-                <div className="text-gray-500 text-xs mb-1">Errors</div>
-                <div className={`font-medium ${dataset.run.error_count > 0 ? "text-red-600" : "text-gray-900"}`}>
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
+                  Errors
+                </div>
+                <div
+                  className={`text-sm font-medium ${
+                    dataset.run.error_count > 0
+                      ? "text-[var(--error)]"
+                      : "text-[var(--text-secondary)]"
+                  }`}
+                >
                   {formatNumber(dataset.run.error_count)}
                 </div>
               </div>
               <div>
-                <div className="text-gray-500 text-xs mb-1">Last Run</div>
-                <div className="font-medium">{formatDate(dataset.run.ended_at)}</div>
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
+                  Last Run
+                </div>
+                <div className="text-sm font-medium text-[var(--text-secondary)]">
+                  {formatDate(dataset.run.ended_at)}
+                </div>
               </div>
             </div>
           )}
@@ -187,91 +225,94 @@ export default function Dashboard() {
   const totalErrors = datasets.reduce((sum, d) => sum + (d.run?.error_count || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Puffle className="w-8 h-8" />
-            <span className="font-bold">ScrappyPuffle</span>
+      <header className="border-b border-[var(--border-subtle)]">
+        <div className="max-w-6xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <Puffle className="w-7 h-7" />
+            <span className="font-bold text-sm tracking-wide">ScrappyPuffle</span>
           </Link>
-          <span className="text-sm text-gray-500">Data Dashboard</span>
+          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.2em]">
+            Data Dashboard
+          </span>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="max-w-6xl mx-auto px-6 md:px-10 py-8">
         {/* Stats */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8"
         >
-          <div className="bg-white border border-gray-200 p-6">
-            <div className="text-3xl font-bold text-gray-900">{datasets.length}</div>
-            <div className="text-sm text-gray-500">Scrapers</div>
-          </div>
-          <div className="bg-white border border-gray-200 p-6">
-            <div className="text-3xl font-bold text-gray-900">{formatNumber(totalRecords)}</div>
-            <div className="text-sm text-gray-500">Total Records</div>
-          </div>
-          <div className="bg-white border border-gray-200 p-6">
-            <div className="text-3xl font-bold text-gray-900">{industries.length}</div>
-            <div className="text-sm text-gray-500">Industries</div>
-          </div>
-          <div className="bg-white border border-gray-200 p-6">
-            <div className={`text-3xl font-bold ${totalErrors > 0 ? "text-red-600" : "text-gray-900"}`}>
-              {formatNumber(totalErrors)}
+          {[
+            { label: "Scrapers", value: datasets.length, color: "var(--text-primary)" },
+            { label: "Total Records", value: formatNumber(totalRecords), color: "var(--accent)" },
+            { label: "Industries", value: industries.length, color: "var(--text-primary)" },
+            {
+              label: "Errors",
+              value: formatNumber(totalErrors),
+              color: totalErrors > 0 ? "var(--error)" : "var(--text-primary)",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-[var(--bg-surface)] border border-[var(--border)] p-5"
+            >
+              <div
+                className="text-2xl md:text-3xl font-bold"
+                style={{ color: stat.color }}
+              >
+                {stat.value}
+              </div>
+              <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.15em] mt-1">
+                {stat.label}
+              </div>
             </div>
-            <div className="text-sm text-gray-500">Total Errors</div>
-          </div>
+          ))}
         </motion.div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-4 mb-8">
-          {/* Status Filter */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-sm text-gray-500 py-2 mr-2">Status:</span>
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-4 py-2 text-sm border transition-colors ${
-                statusFilter === "all"
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setStatusFilter("final")}
-              className={`px-4 py-2 text-sm border transition-colors ${
-                statusFilter === "final"
-                  ? "bg-green-600 text-white border-green-600"
-                  : "bg-white text-gray-900 border-gray-300 hover:border-green-600"
-              }`}
-            >
-              Final
-            </button>
-            <button
-              onClick={() => setStatusFilter("in_progress")}
-              className={`px-4 py-2 text-sm border transition-colors ${
-                statusFilter === "in_progress"
-                  ? "bg-yellow-500 text-white border-yellow-500"
-                  : "bg-white text-gray-900 border-gray-300 hover:border-yellow-500"
-              }`}
-            >
-              In Progress
-            </button>
+        <div className="flex flex-col gap-3 mb-8">
+          {/* Status */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.15em] mr-1 w-14">
+              Status
+            </span>
+            {[
+              { key: "all", label: "All" },
+              { key: "final", label: "Final" },
+              { key: "in_progress", label: "In Progress" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className={`px-3 py-1.5 text-xs border transition-all ${
+                  statusFilter === f.key
+                    ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] font-bold"
+                    : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
 
-          {/* Industry Filter */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-sm text-gray-500 py-2 mr-2">Industry:</span>
+          {/* Industry */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.15em] mr-1 w-14">
+              Industry
+            </span>
             <button
               onClick={() => setIndustryFilter("all")}
-              className={`px-4 py-2 text-sm border transition-colors ${
+              className={`px-3 py-1.5 text-xs border transition-all ${
                 industryFilter === "all"
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
+                  ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] font-bold"
+                  : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]"
               }`}
             >
               All
@@ -280,10 +321,10 @@ export default function Dashboard() {
               <button
                 key={industry}
                 onClick={() => setIndustryFilter(industry)}
-                className={`px-4 py-2 text-sm border transition-colors ${
+                className={`px-3 py-1.5 text-xs border transition-all ${
                   industryFilter === industry
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-900 border-gray-300 hover:border-gray-900"
+                    ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] font-bold"
+                    : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]"
                 }`}
               >
                 {getIndustryLabel(industry)}
@@ -292,34 +333,38 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Dataset Cards */}
+        {/* Dataset cards */}
         {loading ? (
-          <div className="text-center py-20 text-gray-500">Loading datasets...</div>
+          <div className="text-center py-20 text-[var(--text-muted)]">
+            <span className="blink">Loading datasets...</span>
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {filteredDatasets.map((dataset, i) => (
               <DatasetCard
                 key={`${dataset.industry}/${dataset.scraper}`}
                 dataset={dataset}
-                delay={i * 0.05}
+                delay={i * 0.04}
               />
             ))}
           </div>
         )}
 
         {!loading && filteredDatasets.length === 0 && (
-          <div className="text-center py-20 text-gray-500">No datasets found</div>
+          <div className="text-center py-20">
+            <p className="text-[var(--text-muted)]">No datasets match your filters</p>
+          </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="max-w-6xl mx-auto px-6 py-8 border-t border-gray-200 mt-10">
-        <div className="flex items-center justify-between">
+      <footer className="border-t border-[var(--border-subtle)] mt-10">
+        <div className="max-w-6xl mx-auto px-6 md:px-10 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Puffle className="w-5 h-5" />
-            <span className="text-sm">ScrappyPuffle</span>
+            <span className="text-xs text-[var(--text-muted)]">ScrappyPuffle</span>
           </div>
-          <span className="text-gray-500 text-sm">2025</span>
+          <span className="text-[var(--text-muted)] text-xs">2025</span>
         </div>
       </footer>
     </div>

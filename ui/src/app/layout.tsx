@@ -16,7 +16,8 @@ const caveat = Caveat({
 
 export const metadata: Metadata = {
   title: "ScrappyPuffle — Find Your Early Adopters",
-  description: "We read posts, activity, and local directories before showing you a single name, so outreach feels obvious, not awkward.",
+  description:
+    "We scan posts, directories, and signals across the web. Then we throw away the noise.",
 };
 
 export default function RootLayout({
@@ -25,8 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${spaceMono.variable} ${caveat.variable} antialiased`}>
+    <html lang="en" className="dark">
+      <body
+        className={`${spaceMono.variable} ${caveat.variable} antialiased noise`}
+      >
         {children}
       </body>
     </html>

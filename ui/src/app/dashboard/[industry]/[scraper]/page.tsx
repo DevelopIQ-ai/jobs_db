@@ -28,24 +28,18 @@ function Puffle({ className = "" }: { className?: string }) {
     <svg viewBox="0 0 120 100" className={className} fill="none">
       <path
         d="M60 90 C25 90 15 60 20 45 C25 25 45 15 60 15 C75 15 95 25 100 45 C105 60 95 90 60 90Z"
-        fill="#E85D04"
-        stroke="#1a1a1a"
-        strokeWidth="2"
+        fill="#FF6B00"
+        stroke="#FF853380"
+        strokeWidth="1.5"
       />
-      <ellipse cx="42" cy="40" rx="12" ry="10" fill="#FDBA74" opacity="0.5" />
-      <ellipse cx="45" cy="50" rx="8" ry="10" fill="white" stroke="#1a1a1a" strokeWidth="1.5" />
-      <ellipse cx="72" cy="50" rx="8" ry="10" fill="white" stroke="#1a1a1a" strokeWidth="1.5" />
-      <circle cx="47" cy="52" r="4" fill="#1a1a1a" />
-      <circle cx="74" cy="52" r="4" fill="#1a1a1a" />
-      <circle cx="48" cy="50" r="1.5" fill="white" />
-      <circle cx="75" cy="50" r="1.5" fill="white" />
-      <path
-        d="M50 18 Q55 5 60 15 Q62 8 65 18"
-        fill="none"
-        stroke="#1a1a1a"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
+      <ellipse cx="42" cy="40" rx="12" ry="10" fill="#FF8533" opacity="0.25" />
+      <ellipse cx="45" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
+      <ellipse cx="72" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
+      <circle cx="47" cy="52" r="4" fill="#0C0C14" />
+      <circle cx="74" cy="52" r="4" fill="#0C0C14" />
+      <circle cx="48.5" cy="50.5" r="1.5" fill="white" />
+      <circle cx="75.5" cy="50.5" r="1.5" fill="white" />
+      <path d="M50 18 Q55 5 60 15 Q62 8 65 18" fill="none" stroke="#FF8533" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -53,13 +47,11 @@ function Puffle({ className = "" }: { className?: string }) {
 function getNestedValue(obj: unknown, path: string): unknown {
   const parts = path.split(".");
   let current: unknown = obj;
-
   for (const part of parts) {
     if (current === null || current === undefined) return undefined;
     if (typeof current !== "object") return undefined;
     current = (current as Record<string, unknown>)[part];
   }
-
   return current;
 }
 
@@ -76,7 +68,7 @@ function formatColumnName(path: string): string {
 }
 
 function formatCellValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "\u2014";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
@@ -96,16 +88,16 @@ function getIndustryLabel(industry: string): string {
   return labels[industry] || industry.replace(/_/g, " ");
 }
 
-function getTypeColor(type: string): string {
-  const colors: Record<string, string> = {
-    string: "bg-blue-100 text-blue-800",
-    number: "bg-green-100 text-green-800",
-    boolean: "bg-purple-100 text-purple-800",
-    array: "bg-amber-100 text-amber-800",
-    object: "bg-rose-100 text-rose-800",
-    null: "bg-gray-100 text-gray-500",
+function getTypeColor(type: string): { bg: string; text: string } {
+  const colors: Record<string, { bg: string; text: string }> = {
+    string: { bg: "rgba(100,181,246,0.12)", text: "#64B5F6" },
+    number: { bg: "rgba(0,230,118,0.12)", text: "#00E676" },
+    boolean: { bg: "rgba(187,134,252,0.12)", text: "#BB86FC" },
+    array: { bg: "rgba(255,183,77,0.12)", text: "#FFB74D" },
+    object: { bg: "rgba(255,138,128,0.12)", text: "#FF8A80" },
+    null: { bg: "rgba(85,85,106,0.12)", text: "#55556A" },
   };
-  return colors[type] || "bg-gray-100 text-gray-800";
+  return colors[type] || { bg: "rgba(85,85,106,0.12)", text: "#8888A0" };
 }
 
 function getSectionFromPath(path: string): string {
@@ -139,101 +131,118 @@ export default function LeadsPage({
       });
   }, [industry, scraper]);
 
-  const displayName = scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || scraper;
+  const displayName =
+    scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || scraper;
 
-  // Group schema by section
-  const schemaBySection = data?.schema.reduce((acc, field) => {
-    const section = getSectionFromPath(field.path);
-    if (!acc[section]) acc[section] = [];
-    acc[section].push(field);
-    return acc;
-  }, {} as Record<string, SchemaField[]>);
+  const schemaBySection = data?.schema.reduce(
+    (acc, field) => {
+      const section = getSectionFromPath(field.path);
+      if (!acc[section]) acc[section] = [];
+      acc[section].push(field);
+      return acc;
+    },
+    {} as Record<string, SchemaField[]>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <Puffle className="w-8 h-8" />
-              <span className="font-bold">ScrappyPuffle</span>
+      <header className="border-b border-[var(--border-subtle)]">
+        <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-sm">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <Puffle className="w-6 h-6" />
+              <span className="font-bold tracking-wide">ScrappyPuffle</span>
             </Link>
-            <span className="text-gray-300">/</span>
-            <span className="text-gray-500">{getIndustryLabel(industry)}</span>
-            <span className="text-gray-300">/</span>
-            <span className="font-medium">{displayName}</span>
+            <span className="text-[var(--text-muted)]">/</span>
+            <span className="text-[var(--text-muted)]">
+              {getIndustryLabel(industry)}
+            </span>
+            <span className="text-[var(--text-muted)]">/</span>
+            <span className="text-[var(--accent)]">{displayName}</span>
           </div>
           <Link
             href="/dashboard"
-            className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
           >
-            ← Back to Dashboard
+            &larr; Back
           </Link>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 md:px-10 py-8">
         {loading && (
-          <div className="text-center py-20 text-gray-500">Loading leads...</div>
+          <div className="text-center py-20 text-[var(--text-muted)]">
+            <span className="blink">Loading leads...</span>
+          </div>
         )}
 
         {error && (
-          <div className="text-center py-20 text-red-500">{error}</div>
+          <div className="text-center py-20 text-[var(--error)]">{error}</div>
         )}
 
         {data && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {/* Header with tabs */}
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <h1 className="text-2xl font-bold">{displayName}</h1>
-                <div className="flex border border-gray-200 rounded overflow-hidden">
+            {/* Title bar + tabs */}
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-5">
+                <h1 className="text-xl font-bold">{displayName}</h1>
+                <div className="flex border border-[var(--border)] overflow-hidden">
                   <button
                     onClick={() => setActiveTab("data")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`px-4 py-1.5 text-xs font-medium transition-all ${
                       activeTab === "data"
-                        ? "bg-gray-900 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
+                        ? "bg-[var(--accent)] text-[var(--bg-primary)]"
+                        : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
                     Data
                   </button>
                   <button
                     onClick={() => setActiveTab("schema")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`px-4 py-1.5 text-xs font-medium transition-all ${
                       activeTab === "schema"
-                        ? "bg-gray-900 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
+                        ? "bg-[var(--accent)] text-[var(--bg-primary)]"
+                        : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
                     Schema
                   </button>
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
-                <span className="font-medium text-gray-900">{formatNumber(data.total)}</span> records
-                {" · "}
-                <span className="font-medium text-gray-900">{data.columns.length}</span> fields
+              <div className="text-xs text-[var(--text-muted)]">
+                <span className="text-[var(--accent)] font-bold">
+                  {formatNumber(data.total)}
+                </span>{" "}
+                records &middot;{" "}
+                <span className="text-[var(--text-secondary)] font-bold">
+                  {data.columns.length}
+                </span>{" "}
+                fields
               </div>
             </div>
 
-            {/* Data Tab */}
+            {/* ── Data Tab ──────────────────────────── */}
             {activeTab === "data" && (
               <>
-                <div className="bg-white border border-gray-200 overflow-hidden">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-[13px]">
                       <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs w-12 sticky left-0 bg-gray-50">#</th>
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="text-left px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-wider w-12 sticky left-0 bg-[var(--bg-elevated)]">
+                            #
+                          </th>
                           {data.columns.map((col) => (
                             <th
                               key={col}
-                              className="text-left px-4 py-3 font-semibold text-gray-700 whitespace-nowrap"
+                              className="text-left px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-wider whitespace-nowrap bg-[var(--bg-elevated)]"
                               title={col}
                             >
                               {formatColumnName(col)}
@@ -245,14 +254,20 @@ export default function LeadsPage({
                         {data.leads.map((lead, i) => (
                           <tr
                             key={i}
-                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                            className={`border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors ${
+                              i % 2 === 0 ? "" : "bg-[var(--bg-deep)]"
+                            }`}
                           >
-                            <td className="px-4 py-3 text-gray-400 text-xs sticky left-0 bg-white">{i + 1}</td>
+                            <td className="px-4 py-2.5 text-[var(--text-muted)] text-xs sticky left-0 bg-inherit">
+                              {i + 1}
+                            </td>
                             {data.columns.map((col) => (
                               <td
                                 key={col}
-                                className="px-4 py-3 text-gray-700 max-w-[300px] truncate"
-                                title={formatCellValue(getNestedValue(lead, col))}
+                                className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[280px] truncate"
+                                title={formatCellValue(
+                                  getNestedValue(lead, col)
+                                )}
                               >
                                 {formatCellValue(getNestedValue(lead, col))}
                               </td>
@@ -265,45 +280,77 @@ export default function LeadsPage({
                 </div>
 
                 {data.total > data.sample && (
-                  <div className="mt-4 text-center text-sm text-gray-500">
+                  <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
                     Showing {data.sample} of {formatNumber(data.total)} records
                   </div>
                 )}
               </>
             )}
 
-            {/* Schema Tab */}
+            {/* ── Schema Tab ────────────────────────── */}
             {activeTab === "schema" && schemaBySection && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {Object.entries(schemaBySection).map(([section, fields]) => (
-                  <div key={section} className="bg-white border border-gray-200 overflow-hidden">
-                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-                      <h3 className="font-semibold text-gray-900 capitalize">{section}</h3>
+                  <div
+                    key={section}
+                    className="bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden"
+                  >
+                    <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-5 py-3 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                      <h3 className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] font-bold">
+                        {section}
+                      </h3>
+                      <span className="text-[10px] text-[var(--text-muted)] ml-auto">
+                        {fields.length} fields
+                      </span>
                     </div>
-                    <table className="w-full text-sm">
+                    <table className="w-full text-[13px]">
                       <thead>
-                        <tr className="border-b border-gray-100">
-                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs w-1/3">Field</th>
-                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs w-24">Type</th>
-                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Example</th>
+                        <tr className="border-b border-[var(--border-subtle)]">
+                          <th className="text-left px-5 py-2 text-[var(--text-muted)] text-[10px] uppercase tracking-wider w-1/3">
+                            Field
+                          </th>
+                          <th className="text-left px-5 py-2 text-[var(--text-muted)] text-[10px] uppercase tracking-wider w-24">
+                            Type
+                          </th>
+                          <th className="text-left px-5 py-2 text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
+                            Example
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {fields.map((field) => (
-                          <tr key={field.path} className="border-b border-gray-50 hover:bg-gray-50">
-                            <td className="px-4 py-3">
-                              <code className="text-sm text-gray-800 font-mono">{field.path}</code>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-block text-xs px-2 py-1 rounded ${getTypeColor(field.type)}`}>
-                                {field.type}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-gray-600 max-w-md truncate font-mono text-xs" title={formatCellValue(field.example)}>
-                              {formatCellValue(field.example)}
-                            </td>
-                          </tr>
-                        ))}
+                        {fields.map((field) => {
+                          const typeColor = getTypeColor(field.type);
+                          return (
+                            <tr
+                              key={field.path}
+                              className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors"
+                            >
+                              <td className="px-5 py-2.5">
+                                <code className="text-[13px] text-[var(--text-primary)] font-mono">
+                                  {field.path}
+                                </code>
+                              </td>
+                              <td className="px-5 py-2.5">
+                                <span
+                                  className="inline-block text-[10px] px-2 py-0.5 rounded-sm font-bold uppercase tracking-wider"
+                                  style={{
+                                    backgroundColor: typeColor.bg,
+                                    color: typeColor.text,
+                                  }}
+                                >
+                                  {field.type}
+                                </span>
+                              </td>
+                              <td
+                                className="px-5 py-2.5 text-[var(--text-muted)] max-w-md truncate font-mono text-xs"
+                                title={formatCellValue(field.example)}
+                              >
+                                {formatCellValue(field.example)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
