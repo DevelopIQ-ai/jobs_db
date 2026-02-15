@@ -19,45 +19,16 @@ interface Dataset {
   industry: string;
   scraper: string;
   source_id: string;
+  entity_type: "person" | "company" | "both";
   status: "final" | "in_progress";
   run: RunData | null;
   readme: string;
   leadsCount: number;
-}
-
-function Puffle({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 100" className={className} fill="none">
-      <path
-        d="M60 90 C25 90 15 60 20 45 C25 25 45 15 60 15 C75 15 95 25 100 45 C105 60 95 90 60 90Z"
-        fill="#FF6B00"
-        stroke="#FF853380"
-        strokeWidth="1.5"
-      />
-      <ellipse cx="42" cy="40" rx="12" ry="10" fill="#FF8533" opacity="0.25" />
-      <ellipse cx="45" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
-      <ellipse cx="72" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
-      <circle cx="47" cy="52" r="4" fill="#0C0C14" />
-      <circle cx="74" cy="52" r="4" fill="#0C0C14" />
-      <circle cx="48.5" cy="50.5" r="1.5" fill="white" />
-      <circle cx="75.5" cy="50.5" r="1.5" fill="white" />
-      <path d="M50 18 Q55 5 60 15 Q62 8 65 18" fill="none" stroke="#FF8533" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
+  contactEnrichment: Record<string, number>;
 }
 
 function formatNumber(n: number): string {
   return n.toLocaleString();
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function getIndustryLabel(industry: string): string {
@@ -71,32 +42,129 @@ function getIndustryLabel(industry: string): string {
   return labels[industry] || industry.replace(/_/g, " ");
 }
 
-function getIndustryAccent(industry: string): string {
-  const colors: Record<string, string> = {
-    finance: "#00E676",
-    investors: "#BB86FC",
-    law: "#64B5F6",
-    real_estate: "#FFB74D",
-    tech_founders: "#FF8A80",
-  };
-  return colors[industry] || "#FF6B00";
+/* ── Icons ───────────────────────────────────────────── */
+
+function EmailIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+    </svg>
+  );
 }
 
-function getReadmeDescription(readme: string): string {
-  const lines = readme.split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#") && !trimmed.startsWith("```")) {
-      return trimmed;
-    }
-  }
-  return "";
+function PhoneIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+    </svg>
+  );
+}
+
+function LinkedinIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  );
+}
+
+function TwitterIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function CrunchbaseIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M21.6 0H2.4A2.4 2.4 0 000 2.4v19.2A2.4 2.4 0 002.4 24h19.2a2.4 2.4 0 002.4-2.4V2.4A2.4 2.4 0 0021.6 0zM7.045 14.465A2.11 2.11 0 019.84 13.42h.075a2.11 2.11 0 011.84-1.065c1.17 0 2.115.945 2.115 2.11s-.945 2.115-2.115 2.115a2.11 2.11 0 01-1.84-1.065H9.84a2.11 2.11 0 01-2.795-1.05zm9.91 2.115a2.11 2.11 0 01-2.115-2.115c0-1.17.945-2.11 2.115-2.11s2.115.94 2.115 2.11-.945 2.115-2.115 2.115z" />
+    </svg>
+  );
+}
+
+function PersonIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function CompanyIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+const contactIconMap: Record<string, { icon: React.FC<{ className?: string }>; label: string; color: string }> = {
+  email: { icon: EmailIcon, label: "Email", color: "#f97316" },
+  phone: { icon: PhoneIcon, label: "Phone", color: "#22c55e" },
+  linkedin: { icon: LinkedinIcon, label: "LinkedIn", color: "#0a66c2" },
+  twitter: { icon: TwitterIcon, label: "X", color: "#fff" },
+  crunchbase: { icon: CrunchbaseIcon, label: "Crunchbase", color: "#ff6550" },
+};
+
+/* ── Entity type colors ──────────────────────────────── */
+
+const entityBorderColor: Record<string, string> = {
+  person: "#22c55e",
+  company: "#eab308",
+  both: "#a855f7",
+};
+
+/* ── Components ──────────────────────────────────────── */
+
+function ContactEnrichmentRow({ enrichment }: { enrichment: Record<string, number> }) {
+  const entries = Object.entries(enrichment);
+  if (entries.length === 0) return null;
+
+  const order = ["email", "phone", "linkedin", "twitter", "crunchbase"];
+  const sorted = entries.sort(([a], [b]) => {
+    const ai = order.indexOf(a);
+    const bi = order.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      {sorted.map(([field, pct]) => {
+        const entry = contactIconMap[field];
+        const Icon = entry?.icon;
+        const label = entry?.label || field;
+        const color = entry?.color || "#888";
+        const dim = pct < 5 ? 0.3 : pct < 25 ? 0.5 : 1;
+
+        return (
+          <span
+            key={field}
+            title={`${label}: ${pct}%`}
+            className="inline-flex items-center gap-1"
+            style={{ opacity: dim }}
+          >
+            {Icon ? (
+              <span style={{ color }}>
+                <Icon className="w-3.5 h-3.5" />
+              </span>
+            ) : (
+              <span className="text-[10px]" style={{ color }}>{field}</span>
+            )}
+            <span className="text-[10px] text-[#666] font-mono">{pct}%</span>
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 function DatasetCard({ dataset, delay }: { dataset: Dataset; delay: number }) {
-  const description = getReadmeDescription(dataset.readme);
-  const accentColor = getIndustryAccent(dataset.industry);
   const isFinal = dataset.status === "final";
+  const hasEnrichment = Object.keys(dataset.contactEnrichment).length > 0;
+  const topColor = entityBorderColor[dataset.entity_type] || "#888";
 
   return (
     <Link href={`/dashboard/${dataset.industry}/${dataset.scraper}`}>
@@ -104,92 +172,47 @@ function DatasetCard({ dataset, delay }: { dataset: Dataset; delay: number }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay, duration: 0.2 }}
-        className="bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--accent)] transition-all cursor-pointer group relative overflow-hidden"
+        className="bg-[#111] border border-[#333] hover:border-[#555] transition-all cursor-pointer group"
+        style={{ borderTopColor: topColor, borderTopWidth: 2 }}
       >
-        {/* top accent strip */}
-        <div
-          className="h-[2px] w-full"
-          style={{ background: accentColor }}
-        />
-
-        <div className="p-5">
-          {/* status + industry + count */}
-          <div className="flex items-start justify-between gap-4 mb-3">
-            <div className="flex items-center gap-3">
-              <span
-                className={`inline-block w-2 h-2 rounded-full ${isFinal ? "pulse-dot" : ""}`}
-                style={{ color: isFinal ? "var(--success)" : "var(--accent)", backgroundColor: isFinal ? "var(--success)" : "var(--accent)" }}
-                title={isFinal ? "Final" : "In Progress"}
-              />
-              <span
-                className="text-[10px] uppercase tracking-[0.15em] px-2 py-0.5 border"
-                style={{
-                  color: accentColor,
-                  borderColor: accentColor + "40",
-                  backgroundColor: accentColor + "10",
-                }}
-              >
-                {getIndustryLabel(dataset.industry)}
-              </span>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-[var(--accent)]">
-                {formatNumber(dataset.leadsCount)}
-              </div>
-              <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
-                records
-              </div>
-            </div>
+        <div className="p-4">
+          {/* Row 1: name + count */}
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-bold text-sm text-white group-hover:text-[#ccc] transition-colors truncate flex-1">
+              {dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}
+            </h3>
+            <span className="text-lg font-bold text-white shrink-0">
+              {formatNumber(dataset.leadsCount)}
+            </span>
           </div>
 
-          {/* name + source id */}
-          <h3 className="font-bold text-base mb-1 group-hover:text-[var(--accent)] transition-colors">
-            {dataset.scraper.replace(/-/g, " ").replace(/scraper/i, "").trim() || dataset.scraper}
-          </h3>
-          <p className="text-[var(--text-muted)] text-xs font-mono mb-3">
-            {dataset.source_id}
-          </p>
+          {/* Row 2: industry + wip */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[10px] uppercase tracking-[0.15em] text-[#666] border border-[#333] px-2 py-0.5">
+              {getIndustryLabel(dataset.industry)}
+            </span>
+            {!isFinal && (
+              <span className="text-[10px] uppercase tracking-[0.15em] text-[#555] border border-[#333] border-dashed px-2 py-0.5">
+                WIP
+              </span>
+            )}
+          </div>
 
-          {/* description */}
-          {description && (
-            <p className="text-[var(--text-secondary)] text-xs mb-4 leading-relaxed line-clamp-2">
-              {description}
-            </p>
-          )}
-
-          {/* stats row */}
-          {dataset.run && (
-            <div className="grid grid-cols-3 gap-4 pt-3 border-t border-[var(--border)]">
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
-                  Valid
-                </div>
-                <div className="text-sm font-medium text-[var(--success)]">
-                  {formatNumber(dataset.run.records_valid)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
-                  Errors
-                </div>
-                <div
-                  className={`text-sm font-medium ${
-                    dataset.run.error_count > 0
-                      ? "text-[var(--error)]"
-                      : "text-[var(--text-secondary)]"
-                  }`}
-                >
-                  {formatNumber(dataset.run.error_count)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
-                  Last Run
-                </div>
-                <div className="text-sm font-medium text-[var(--text-secondary)]">
-                  {formatDate(dataset.run.ended_at)}
-                </div>
-              </div>
+          {/* Row 3: enrichment + error % */}
+          {(hasEnrichment || (dataset.run && dataset.run.records_found > 0)) && (
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#222]">
+              {hasEnrichment ? (
+                <ContactEnrichmentRow enrichment={dataset.contactEnrichment} />
+              ) : (
+                <span />
+              )}
+              {dataset.run && dataset.run.records_found > 0 && (
+                <span className={`text-[10px] font-mono shrink-0 ${
+                  dataset.run.error_count > 0 ? "text-[#888]" : "text-[#444]"
+                }`}>
+                  {Math.round((dataset.run.error_count / dataset.run.records_found) * 100)}% err
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -222,65 +245,24 @@ export default function Dashboard() {
   });
 
   const totalRecords = datasets.reduce((sum, d) => sum + d.leadsCount, 0);
-  const totalErrors = datasets.reduce((sum, d) => sum + (d.run?.error_count || 0), 0);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="border-b border-[var(--border-subtle)]">
+      <header className="border-b border-[#222]">
         <div className="max-w-6xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
-            <Puffle className="w-7 h-7" />
-            <span className="font-bold text-sm tracking-wide">ScrappyPuffle</span>
-          </Link>
-          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.2em]">
-            Data Dashboard
+          <span className="font-bold text-sm tracking-wide text-white">ScrappyPuffle</span>
+          <span className="text-[10px] text-[#555] uppercase tracking-[0.2em]">
+            {formatNumber(totalRecords)} records
           </span>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 md:px-10 py-8">
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8"
-        >
-          {[
-            { label: "Scrapers", value: datasets.length, color: "var(--text-primary)" },
-            { label: "Total Records", value: formatNumber(totalRecords), color: "var(--accent)" },
-            { label: "Industries", value: industries.length, color: "var(--text-primary)" },
-            {
-              label: "Errors",
-              value: formatNumber(totalErrors),
-              color: totalErrors > 0 ? "var(--error)" : "var(--text-primary)",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-[var(--bg-surface)] border border-[var(--border)] p-5"
-            >
-              <div
-                className="text-2xl md:text-3xl font-bold"
-                style={{ color: stat.color }}
-              >
-                {stat.value}
-              </div>
-              <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.15em] mt-1">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
+      <main className="max-w-6xl mx-auto px-6 md:px-10 py-6">
         {/* Filters */}
-        <div className="flex flex-col gap-3 mb-8">
-          {/* Status */}
+        <div className="flex flex-col gap-3 mb-6">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.15em] mr-1 w-14">
+            <span className="text-[10px] text-[#555] uppercase tracking-[0.15em] mr-1 w-14">
               Status
             </span>
             {[
@@ -293,8 +275,8 @@ export default function Dashboard() {
                 onClick={() => setStatusFilter(f.key)}
                 className={`px-3 py-1.5 text-xs border transition-all ${
                   statusFilter === f.key
-                    ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] font-bold"
-                    : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]"
+                    ? "bg-white text-black border-white font-bold"
+                    : "bg-[#111] text-[#888] border-[#333] hover:border-[#666]"
                 }`}
               >
                 {f.label}
@@ -302,17 +284,16 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Industry */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-[0.15em] mr-1 w-14">
+            <span className="text-[10px] text-[#555] uppercase tracking-[0.15em] mr-1 w-14">
               Industry
             </span>
             <button
               onClick={() => setIndustryFilter("all")}
               className={`px-3 py-1.5 text-xs border transition-all ${
                 industryFilter === "all"
-                  ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] font-bold"
-                  : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]"
+                  ? "bg-white text-black border-white font-bold"
+                  : "bg-[#111] text-[#888] border-[#333] hover:border-[#666]"
               }`}
             >
               All
@@ -323,8 +304,8 @@ export default function Dashboard() {
                 onClick={() => setIndustryFilter(industry)}
                 className={`px-3 py-1.5 text-xs border transition-all ${
                   industryFilter === industry
-                    ? "bg-[var(--accent)] text-[var(--bg-primary)] border-[var(--accent)] font-bold"
-                    : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--accent)]"
+                    ? "bg-white text-black border-white font-bold"
+                    : "bg-[#111] text-[#888] border-[#333] hover:border-[#666]"
                 }`}
               >
                 {getIndustryLabel(industry)}
@@ -335,16 +316,16 @@ export default function Dashboard() {
 
         {/* Dataset cards */}
         {loading ? (
-          <div className="text-center py-20 text-[var(--text-muted)]">
-            <span className="blink">Loading datasets...</span>
+          <div className="text-center py-20 text-[#555]">
+            Loading datasets...
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredDatasets.map((dataset, i) => (
               <DatasetCard
                 key={`${dataset.industry}/${dataset.scraper}`}
                 dataset={dataset}
-                delay={i * 0.04}
+                delay={i * 0.03}
               />
             ))}
           </div>
@@ -352,21 +333,10 @@ export default function Dashboard() {
 
         {!loading && filteredDatasets.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-[var(--text-muted)]">No datasets match your filters</p>
+            <p className="text-[#555]">No datasets match your filters</p>
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-[var(--border-subtle)] mt-10">
-        <div className="max-w-6xl mx-auto px-6 md:px-10 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Puffle className="w-5 h-5" />
-            <span className="text-xs text-[var(--text-muted)]">ScrappyPuffle</span>
-          </div>
-          <span className="text-[var(--text-muted)] text-xs">2025</span>
-        </div>
-      </footer>
     </div>
   );
 }

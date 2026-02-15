@@ -1,114 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --bg-deep: #07070D;
-  --bg-primary: #0C0C14;
-  --bg-surface: #13131F;
-  --bg-elevated: #1A1A2A;
-  --border-subtle: #1A1A2E;
-  --border: #252540;
-  --border-bright: #3A3A5A;
-  --text-primary: #E8E8F0;
-  --text-secondary: #8888A0;
-  --text-muted: #55556A;
-  --accent: #FF6B00;
-  --accent-bright: #FF8533;
-  --accent-dim: rgba(255, 107, 0, 0.15);
-  --success: #00E676;
-  --success-dim: rgba(0, 230, 118, 0.15);
-  --error: #FF4444;
-  --error-dim: rgba(255, 68, 68, 0.15);
+  --bg-deep: #000000;
+  --bg-primary: #000000;
+  --bg-surface: #111111;
+  --bg-elevated: #1a1a1a;
+  --border-subtle: #1a1a1a;
+  --border: #333333;
+  --border-bright: #555555;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #555555;
 }
 
 body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: #000;
+  color: #fff;
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
   font-size: 13px;
   line-height: 1.7;
-}
-
-.hand {
-  font-family: var(--font-hand), cursive;
-}
-
-/* Dot grid background */
-.dot-grid {
-  background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* Terminal window */
-.terminal {
-  background: var(--bg-deep);
-  border: 1px solid var(--border);
-  position: relative;
-  overflow: hidden;
-}
-
-.terminal::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(255, 255, 255, 0.006) 2px,
-    rgba(255, 255, 255, 0.006) 4px
-  );
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Glow effects */
-.glow-sm {
-  box-shadow: 0 0 15px var(--accent-dim);
-}
-
-.glow-md {
-  box-shadow: 0 0 30px var(--accent-dim), 0 0 60px rgba(255, 107, 0, 0.06);
-}
-
-.glow-success {
-  box-shadow: 0 0 15px var(--success-dim);
-}
-
-/* Blink cursor */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-.blink {
-  animation: blink 1s step-end infinite;
-}
-
-/* Pulse for status dots */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
-  50% { opacity: 0.6; box-shadow: 0 0 12px currentColor; }
-}
-
-.pulse-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-/* Gradient divider line */
-.gradient-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
-}
-
-/* Noise texture overlay */
-.noise::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  opacity: 0.02;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 9999;
 }
 
 /* Dark scrollbar */
@@ -118,19 +28,19 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: #000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: #333;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-bright);
+  background: #555;
 }
 
 /* Selection */
 ::selection {
-  background: var(--accent);
-  color: var(--bg-primary);
+  background: #fff;
+  color: #000;
 }

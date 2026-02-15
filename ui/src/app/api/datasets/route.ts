@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import yaml from "js-yaml";
 
 interface RunData {
   source_id: string;
@@ -17,10 +18,12 @@ interface Dataset {
   industry: string;
   scraper: string;
   source_id: string;
+  entity_type: "person" | "company" | "both";
   status: "final" | "in_progress";
   run: RunData | null;
   readme: string;
   leadsCount: number;
+  contactEnrichment: Record<string, number>; // field -> percentage (0-100) of records that have it
 }
 
 function scanDataDirectory(
@@ -57,6 +60,23 @@ function scanDataDirectory(
       let run: RunData | null = null;
       let readme = "";
       let leadsCount = 0;
+      let entityType: "person" | "company" | "both" = "company";
+      const contactFieldCounts: Record<string, number> = {};
+
+      // Read source.yaml for entity_type
+      const sourceYamlPath = path.join(scraperPath, "source.yaml");
+      if (fs.existsSync(sourceYamlPath)) {
+        try {
+          const yamlContent = yaml.load(
+            fs.readFileSync(sourceYamlPath, "utf-8")
+          ) as Record<string, unknown>;
+          if (yamlContent?.entity_type) {
+            entityType = yamlContent.entity_type as "person" | "company" | "both";
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       // Read run.json
       const runPath = path.join(outputPath, "run.json");
@@ -74,21 +94,54 @@ function scanDataDirectory(
         readme = fs.readFileSync(readmePath, "utf-8");
       }
 
-      // Count leads
+      // Count leads and compute contact enrichment percentages
       const leadsPath = path.join(outputPath, "leads.jsonl");
       if (fs.existsSync(leadsPath)) {
         const content = fs.readFileSync(leadsPath, "utf-8");
-        leadsCount = content.trim().split("\n").filter(Boolean).length;
+        const lines = content.trim().split("\n").filter(Boolean);
+        leadsCount = lines.length;
+
+        for (const line of lines) {
+          try {
+            const record = JSON.parse(line);
+            const contact = record.contact;
+            if (contact) {
+              if (contact.email) contactFieldCounts["email"] = (contactFieldCounts["email"] || 0) + 1;
+              if (contact.phone) contactFieldCounts["phone"] = (contactFieldCounts["phone"] || 0) + 1;
+              if (Array.isArray(contact.socials)) {
+                const platforms = new Set<string>();
+                for (const s of contact.socials) {
+                  if (s.platform) platforms.add(s.platform);
+                }
+                for (const p of platforms) {
+                  contactFieldCounts[p] = (contactFieldCounts[p] || 0) + 1;
+                }
+              }
+            }
+          } catch {
+            // skip malformed lines
+          }
+        }
+      }
+
+      // Convert counts to percentages
+      const contactEnrichment: Record<string, number> = {};
+      if (leadsCount > 0) {
+        for (const [field, count] of Object.entries(contactFieldCounts)) {
+          contactEnrichment[field] = Math.round((count / leadsCount) * 100);
+        }
       }
 
       datasets.push({
         industry,
         scraper,
         source_id: run?.source_id || `${industry}/${scraper}`,
+        entity_type: entityType,
         status,
         run,
         readme,
         leadsCount,
+        contactEnrichment,
       });
     }
   }

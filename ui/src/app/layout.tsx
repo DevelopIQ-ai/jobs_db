@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Mono, Caveat } from "next/font/google";
+import { Space_Mono } from "next/font/google";
 import "./globals.css";
 
 const spaceMono = Space_Mono({
@@ -8,16 +8,9 @@ const spaceMono = Space_Mono({
   weight: ["400", "700"],
 });
 
-const caveat = Caveat({
-  variable: "--font-hand",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
 export const metadata: Metadata = {
-  title: "ScrappyPuffle — Find Your Early Adopters",
-  description:
-    "We scan posts, directories, and signals across the web. Then we throw away the noise.",
+  title: "ScrappyPuffle — Data Dashboard",
+  description: "Scraping pipeline data dashboard.",
 };
 
 export default function RootLayout({
@@ -27,9 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${spaceMono.variable} ${caveat.variable} antialiased noise`}
-      >
+      <body className={`${spaceMono.variable} antialiased`}>
         {children}
       </body>
     </html>

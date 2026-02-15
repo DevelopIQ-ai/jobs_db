@@ -23,27 +23,6 @@ interface LeadsResponse {
   sample: number;
 }
 
-function Puffle({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 100" className={className} fill="none">
-      <path
-        d="M60 90 C25 90 15 60 20 45 C25 25 45 15 60 15 C75 15 95 25 100 45 C105 60 95 90 60 90Z"
-        fill="#FF6B00"
-        stroke="#FF853380"
-        strokeWidth="1.5"
-      />
-      <ellipse cx="42" cy="40" rx="12" ry="10" fill="#FF8533" opacity="0.25" />
-      <ellipse cx="45" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
-      <ellipse cx="72" cy="50" rx="8" ry="10" fill="#E8E8F0" stroke="#FF853360" strokeWidth="1" />
-      <circle cx="47" cy="52" r="4" fill="#0C0C14" />
-      <circle cx="74" cy="52" r="4" fill="#0C0C14" />
-      <circle cx="48.5" cy="50.5" r="1.5" fill="white" />
-      <circle cx="75.5" cy="50.5" r="1.5" fill="white" />
-      <path d="M50 18 Q55 5 60 15 Q62 8 65 18" fill="none" stroke="#FF8533" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function getNestedValue(obj: unknown, path: string): unknown {
   const parts = path.split(".");
   let current: unknown = obj;
@@ -86,18 +65,6 @@ function getIndustryLabel(industry: string): string {
     tech_founders: "Tech Founders",
   };
   return labels[industry] || industry.replace(/_/g, " ");
-}
-
-function getTypeColor(type: string): { bg: string; text: string } {
-  const colors: Record<string, { bg: string; text: string }> = {
-    string: { bg: "rgba(100,181,246,0.12)", text: "#64B5F6" },
-    number: { bg: "rgba(0,230,118,0.12)", text: "#00E676" },
-    boolean: { bg: "rgba(187,134,252,0.12)", text: "#BB86FC" },
-    array: { bg: "rgba(255,183,77,0.12)", text: "#FFB74D" },
-    object: { bg: "rgba(255,138,128,0.12)", text: "#FF8A80" },
-    null: { bg: "rgba(85,85,106,0.12)", text: "#55556A" },
-  };
-  return colors[type] || { bg: "rgba(85,85,106,0.12)", text: "#8888A0" };
 }
 
 function getSectionFromPath(path: string): string {
@@ -145,28 +112,27 @@ export default function LeadsPage({
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="border-b border-[var(--border-subtle)]">
+      <header className="border-b border-[#222]">
         <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 text-sm">
             <Link
               href="/dashboard"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="font-bold tracking-wide hover:opacity-80 transition-opacity"
             >
-              <Puffle className="w-6 h-6" />
-              <span className="font-bold tracking-wide">ScrappyPuffle</span>
+              ScrappyPuffle
             </Link>
-            <span className="text-[var(--text-muted)]">/</span>
-            <span className="text-[var(--text-muted)]">
+            <span className="text-[#555]">/</span>
+            <span className="text-[#555]">
               {getIndustryLabel(industry)}
             </span>
-            <span className="text-[var(--text-muted)]">/</span>
-            <span className="text-[var(--accent)]">{displayName}</span>
+            <span className="text-[#555]">/</span>
+            <span className="text-white">{displayName}</span>
           </div>
           <Link
             href="/dashboard"
-            className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+            className="text-xs text-[#555] hover:text-white transition-colors"
           >
             &larr; Back
           </Link>
@@ -175,13 +141,13 @@ export default function LeadsPage({
 
       <main className="max-w-7xl mx-auto px-6 md:px-10 py-8">
         {loading && (
-          <div className="text-center py-20 text-[var(--text-muted)]">
-            <span className="blink">Loading leads...</span>
+          <div className="text-center py-20 text-[#555]">
+            Loading leads...
           </div>
         )}
 
         {error && (
-          <div className="text-center py-20 text-[var(--error)]">{error}</div>
+          <div className="text-center py-20 text-white">{error}</div>
         )}
 
         {data && (
@@ -193,13 +159,13 @@ export default function LeadsPage({
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-5">
                 <h1 className="text-xl font-bold">{displayName}</h1>
-                <div className="flex border border-[var(--border)] overflow-hidden">
+                <div className="flex border border-[#333] overflow-hidden">
                   <button
                     onClick={() => setActiveTab("data")}
                     className={`px-4 py-1.5 text-xs font-medium transition-all ${
                       activeTab === "data"
-                        ? "bg-[var(--accent)] text-[var(--bg-primary)]"
-                        : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        ? "bg-white text-black"
+                        : "bg-[#111] text-[#888] hover:text-white"
                     }`}
                   >
                     Data
@@ -208,41 +174,41 @@ export default function LeadsPage({
                     onClick={() => setActiveTab("schema")}
                     className={`px-4 py-1.5 text-xs font-medium transition-all ${
                       activeTab === "schema"
-                        ? "bg-[var(--accent)] text-[var(--bg-primary)]"
-                        : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        ? "bg-white text-black"
+                        : "bg-[#111] text-[#888] hover:text-white"
                     }`}
                   >
                     Schema
                   </button>
                 </div>
               </div>
-              <div className="text-xs text-[var(--text-muted)]">
-                <span className="text-[var(--accent)] font-bold">
+              <div className="text-xs text-[#555]">
+                <span className="text-white font-bold">
                   {formatNumber(data.total)}
                 </span>{" "}
                 records &middot;{" "}
-                <span className="text-[var(--text-secondary)] font-bold">
+                <span className="text-[#888] font-bold">
                   {data.columns.length}
                 </span>{" "}
                 fields
               </div>
             </div>
 
-            {/* ── Data Tab ──────────────────────────── */}
+            {/* Data Tab */}
             {activeTab === "data" && (
               <>
-                <div className="bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden">
+                <div className="bg-[#111] border border-[#333] overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-[13px]">
                       <thead>
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="text-left px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-wider w-12 sticky left-0 bg-[var(--bg-elevated)]">
+                        <tr className="border-b border-[#333]">
+                          <th className="text-left px-4 py-3 text-[#555] text-[10px] uppercase tracking-wider w-12 sticky left-0 bg-[#1a1a1a]">
                             #
                           </th>
                           {data.columns.map((col) => (
                             <th
                               key={col}
-                              className="text-left px-4 py-3 text-[var(--text-muted)] text-[10px] uppercase tracking-wider whitespace-nowrap bg-[var(--bg-elevated)]"
+                              className="text-left px-4 py-3 text-[#555] text-[10px] uppercase tracking-wider whitespace-nowrap bg-[#1a1a1a]"
                               title={col}
                             >
                               {formatColumnName(col)}
@@ -254,17 +220,17 @@ export default function LeadsPage({
                         {data.leads.map((lead, i) => (
                           <tr
                             key={i}
-                            className={`border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors ${
-                              i % 2 === 0 ? "" : "bg-[var(--bg-deep)]"
+                            className={`border-b border-[#1a1a1a] hover:bg-[#1a1a1a] transition-colors ${
+                              i % 2 === 0 ? "" : "bg-[#0a0a0a]"
                             }`}
                           >
-                            <td className="px-4 py-2.5 text-[var(--text-muted)] text-xs sticky left-0 bg-inherit">
+                            <td className="px-4 py-2.5 text-[#555] text-xs sticky left-0 bg-inherit">
                               {i + 1}
                             </td>
                             {data.columns.map((col) => (
                               <td
                                 key={col}
-                                className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[280px] truncate"
+                                className="px-4 py-2.5 text-[#888] max-w-[280px] truncate"
                                 title={formatCellValue(
                                   getNestedValue(lead, col)
                                 )}
@@ -280,77 +246,67 @@ export default function LeadsPage({
                 </div>
 
                 {data.total > data.sample && (
-                  <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
+                  <div className="mt-4 text-center text-xs text-[#555]">
                     Showing {data.sample} of {formatNumber(data.total)} records
                   </div>
                 )}
               </>
             )}
 
-            {/* ── Schema Tab ────────────────────────── */}
+            {/* Schema Tab */}
             {activeTab === "schema" && schemaBySection && (
               <div className="space-y-4">
                 {Object.entries(schemaBySection).map(([section, fields]) => (
                   <div
                     key={section}
-                    className="bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden"
+                    className="bg-[#111] border border-[#333] overflow-hidden"
                   >
-                    <div className="bg-[var(--bg-elevated)] border-b border-[var(--border)] px-5 py-3 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                      <h3 className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] font-bold">
+                    <div className="bg-[#1a1a1a] border-b border-[#333] px-5 py-3 flex items-center gap-2">
+                      <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#888] font-bold">
                         {section}
                       </h3>
-                      <span className="text-[10px] text-[var(--text-muted)] ml-auto">
+                      <span className="text-[10px] text-[#555] ml-auto">
                         {fields.length} fields
                       </span>
                     </div>
                     <table className="w-full text-[13px]">
                       <thead>
-                        <tr className="border-b border-[var(--border-subtle)]">
-                          <th className="text-left px-5 py-2 text-[var(--text-muted)] text-[10px] uppercase tracking-wider w-1/3">
+                        <tr className="border-b border-[#1a1a1a]">
+                          <th className="text-left px-5 py-2 text-[#555] text-[10px] uppercase tracking-wider w-1/3">
                             Field
                           </th>
-                          <th className="text-left px-5 py-2 text-[var(--text-muted)] text-[10px] uppercase tracking-wider w-24">
+                          <th className="text-left px-5 py-2 text-[#555] text-[10px] uppercase tracking-wider w-24">
                             Type
                           </th>
-                          <th className="text-left px-5 py-2 text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
+                          <th className="text-left px-5 py-2 text-[#555] text-[10px] uppercase tracking-wider">
                             Example
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {fields.map((field) => {
-                          const typeColor = getTypeColor(field.type);
-                          return (
-                            <tr
-                              key={field.path}
-                              className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors"
+                        {fields.map((field) => (
+                          <tr
+                            key={field.path}
+                            className="border-b border-[#1a1a1a] hover:bg-[#1a1a1a] transition-colors"
+                          >
+                            <td className="px-5 py-2.5">
+                              <code className="text-[13px] text-white font-mono">
+                                {field.path}
+                              </code>
+                            </td>
+                            <td className="px-5 py-2.5">
+                              <span className="inline-block text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider border border-[#333] text-[#888]">
+                                {field.type}
+                              </span>
+                            </td>
+                            <td
+                              className="px-5 py-2.5 text-[#555] max-w-md truncate font-mono text-xs"
+                              title={formatCellValue(field.example)}
                             >
-                              <td className="px-5 py-2.5">
-                                <code className="text-[13px] text-[var(--text-primary)] font-mono">
-                                  {field.path}
-                                </code>
-                              </td>
-                              <td className="px-5 py-2.5">
-                                <span
-                                  className="inline-block text-[10px] px-2 py-0.5 rounded-sm font-bold uppercase tracking-wider"
-                                  style={{
-                                    backgroundColor: typeColor.bg,
-                                    color: typeColor.text,
-                                  }}
-                                >
-                                  {field.type}
-                                </span>
-                              </td>
-                              <td
-                                className="px-5 py-2.5 text-[var(--text-muted)] max-w-md truncate font-mono text-xs"
-                                title={formatCellValue(field.example)}
-                              >
-                                {formatCellValue(field.example)}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                              {formatCellValue(field.example)}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
