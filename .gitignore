@@ -4,3 +4,6 @@ node_modules/
 # Environment variables (contains credentials)
 .env.local
 .env
+
+# Git worktrees
+.worktrees/
