@@ -6,13 +6,16 @@
     "validate": "npx tsx validator/validate-scraper-output.ts"
   },
   "dependencies": {
-    "dotenv": "^16.3.1",
+    "agentmail": "^0.2.15",
     "playwright": "^1.40.0",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0",
     "yaml": "^2.3.4"
   },
   "devDependencies": {
+    "@types/node": "^20.10.0",
+    "dotenv": "^17.3.1",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.0"
+    "typescript": "^5.3.3"
   }
 }

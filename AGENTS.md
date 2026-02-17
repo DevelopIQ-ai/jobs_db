@@ -466,3 +466,56 @@ You are building a reliable, refreshable data source that must work again tomorr
 If you are unsure:
 	•	prefer correctness over coverage
 	•	prefer failing loudly over silently corrupting data
+
+⸻
+
+16. AgentMail — Programmatic Email for Scrapers
+
+Some sources require account creation or magic-link sign-in. For these, you have access to **AgentMail** — an API that creates disposable email inboxes on demand.
+
+**When to use AgentMail:**
+	•	A source requires signing up with an email address
+	•	A source uses magic-link / passwordless authentication
+	•	You need to receive a verification code or confirmation email
+
+**Setup:**
+	•	API key is in `.env` as `AGENTMAIL_API_KEY`
+	•	Install the SDK if not there: `npm install agentmail`
+	•	Docs are indexed in Nia: `docs.agentmail.to` (source ID: `3fbf58a3-5599-4267-a686-1987efa64657`)
+
+**TypeScript usage:**
+
+```typescript
+import { AgentMail } from "agentmail";
+
+const client = new AgentMail({ apiKey: process.env.AGENTMAIL_API_KEY });
+
+// 1. Create a fresh inbox
+const inbox = await client.inboxes.create();
+console.log(inbox.inbox_id); // e.g. "abc123@agentmail.to"
+
+// 2. Use inbox.inbox_id as the email when signing up / requesting a magic link
+
+// 3. Poll for incoming messages (magic link, verification code, etc.)
+const messages = await client.inboxes.messages.list({ inboxId: inbox.inbox_id });
+// Parse the message body/HTML to extract the link or code
+```
+
+**Polling pattern for magic links:**
+
+```typescript
+async function waitForEmail(client: AgentMail, inboxId: string, timeoutMs = 60000): Promise<any> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const res = await client.inboxes.messages.list({ inboxId });
+    if (res.count > 0) return res;
+    await new Promise(r => setTimeout(r, 3000)); // poll every 3s
+  }
+  throw new Error("Timed out waiting for email");
+}
+```
+
+**Rules:**
+	•	AgentMail inboxes are @agentmail.to by default — some sites may reject these. Document this in the README if encountered. Use some of the other domains available (developiq.co, pufflemail.com, etc.)
+	•	Store the inbox_id in source.yaml `notes` or scrape-progress.json so it can be reused across runs.
+	•	Never hardcode the API key — always read from `process.env.AGENTMAIL_API_KEY`.

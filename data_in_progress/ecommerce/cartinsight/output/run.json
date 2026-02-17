@@ -1,0 +1,12 @@
+{
+  "source_id": "ecommerce/cartinsight",
+  "run_id": "run_1771209398429",
+  "started_at": "2026-02-16T02:36:38.429Z",
+  "ended_at": "2026-02-16T02:36:38.429Z",
+  "records_found": 24450,
+  "records_valid": 24450,
+  "records_written": 24450,
+  "error_count": 0,
+  "errors": [],
+  "notes": "Merged from 558 CSV exports + search scraping."
+}

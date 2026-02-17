@@ -1,0 +1,24 @@
+"source_id": "ecommerce/cartinsight"
+"display_name": "CartInsight E-Commerce Store Directory"
+"entity_type": "company"
+"data_as_of": "2026-02-16"
+"start_urls":
+  - "https://app.cartinsight.io/all-carts/"
+"run_command": "npx tsx scraper.ts"
+"refresh": "monthly"
+"requires_login": true
+"primary_key_strategy":
+  "type": "stable_id"
+  "stable_id_context_path":
+    - "company"
+    - "domain"
+"expected_volume_range":
+  "min": 100000
+  "max": 150000
+"notes": "Requires free account signup (email + password).
+
+  Disposable email domains are blocked — use AgentMail with developiq.co or pufflemail.com domain.
+
+  No public API — data loaded via AJAX on authenticated pages.
+
+  PHP/jQuery stack, server-side rendered.\n"
