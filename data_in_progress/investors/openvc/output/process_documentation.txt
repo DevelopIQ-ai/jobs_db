@@ -1,0 +1,41 @@
+OpenVC Investor Database Scraper - Process Documentation
+=========================================================
+
+1. INITIAL INVESTIGATION
+   - Direct HTTP fetch of openvc.app returns 403 (Cloudflare protection)
+   - Site requires JavaScript-capable browser to access
+   - Used Playwright MCP browser to explore site structure
+
+2. SITE STRUCTURE
+   - jQuery + Bootstrap 4 site (not a SPA framework)
+   - Data is server-side rendered (SSR) - investor table HTML is in initial response
+   - 828 pages of results, 20 investors per page, 16,541 total
+   - Pagination via URL parameter: /search?page=N
+   - Each investor row contains: name, type, countries, check size, stages, thesis
+   - Fund profile URLs: /fund/<name> (URL-encoded)
+
+3. CLOUDFLARE BYPASS CHALLENGES
+   - Headless Chromium (headless: true) passes Cloudflare on page 1 only
+   - Pages 2+ receive "Just a moment..." JS challenge page (8KB vs 227KB normal)
+   - The cf_clearance cookie is set after page 1 but CF still challenges subsequent requests
+   - Root cause: Cloudflare fingerprints headless Chrome (navigator.plugins, WebGL, etc.)
+   - Solution: Using visible browser mode (headless: false) bypasses all CF challenges
+   - All 828 pages load successfully with zero errors in visible mode
+
+4. EXTRACTION APPROACH
+   - Playwright navigates and retrieves raw HTML via page.content()
+   - Cheerio parses the SSR HTML server-side (no DOM timing issues)
+   - Selectors: a[href^="fund/"] for fund links, a[href^="country/"] for countries
+   - Name extracted from #invOverflow element inside fund link
+   - Type from investor-lists links or fallback to nested divs
+
+5. DEDUPLICATION
+   - OpenVC shows overlapping investors across pages (same investor on multiple pages)
+   - Deduplication by profilePath (fund URL): 16,541 raw -> 10,387 unique
+   - ~37% overlap rate across pages
+
+6. PERFORMANCE
+   - ~2.5 seconds per page with human-like delays
+   - Longer breaks (8-15s) every 50 pages
+   - Full run: ~38 minutes for 828 pages
+   - Progress saved every 10 pages for resume capability
