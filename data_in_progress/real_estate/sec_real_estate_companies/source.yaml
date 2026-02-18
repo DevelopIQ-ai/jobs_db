@@ -1,0 +1,32 @@
+"source_id": "real_estate/sec_real_estate_companies"
+"display_name": "SEC EDGAR Real Estate Companies"
+"entity_type": "company"
+"data_as_of": "2026-02-17"
+"start_urls":
+  - "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&SIC=6500&owner=include&count=100&output=atom"
+  - "https://data.sec.gov/submissions/"
+"run_command": "npx tsx scraper.ts"
+"refresh": "quarterly"
+"primary_key_strategy":
+  "type": "stable_id"
+  "stable_id_context_path":
+    - "context"
+    - "cik"
+"expected_volume_range":
+  "min": 2000
+  "max": 8000
+"notes": "Scrapes SEC EDGAR for public companies with real estate SIC codes:
+
+  - 6500-6553: Real Estate (operators, agents, REITs, developers)
+
+  - 6798: Real Estate Investment Trusts
+
+  - 1520-1542: General Building Contractors
+
+  - 1531: Operative Builders
+
+  Uses browse-edgar Atom feed to collect CIKs by SIC code,
+
+  then data.sec.gov/submissions API for full company details.
+
+  SEC requires User-Agent header. Rate limited to 8 req/sec.\n"
