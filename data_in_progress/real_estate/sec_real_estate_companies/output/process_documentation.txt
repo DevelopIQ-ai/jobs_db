@@ -1,0 +1,36 @@
+SEC EDGAR Real Estate Companies Scraper - Process Documentation
+================================================================
+
+Date: 2026-02-17T08:10:33.758Z
+
+Approach:
+1. Browse-edgar Atom feed used to collect CIK numbers by SIC code
+2. SIC codes targeted: 6500 (Real Estate), 6510 (Real Estate Operators (No Developers) & Lessors), 6512 (Operators of Apartment Buildings), 6513 (Operators of Real Estate NEC), 6519 (Real Property Lessors, NEC), 6531 (Real Estate Agents and Managers), 6532 (Real Estate Dealers (for Their Own Account)), 6552 (Land Subdividers & Developers (No Cemeteries)), 6798 (Real Estate Investment Trusts), 1520 (General Building Contractors - Residential), 1521 (General Contractors - Residential Buildings), 1522 (General Contractors - Residential, Other Than Building), 1531 (Operative Builders), 1540 (General Building Contractors - Nonresidential), 1541 (General Contractors - Industrial & Commercial), 1542 (General Contractors - Nonresidential, Other), 1500 (General Building Contractors)
+3. data.sec.gov/submissions API used to get full company details per CIK
+4. Rate limited to ~8 requests/second (SEC allows 10/sec)
+
+Data fields captured:
+- Company name, legal name
+- CIK (SEC unique identifier)
+- SIC code and description
+- Business address (street, city, state, zip)
+- Phone number
+- Tickers and exchanges (if publicly traded)
+- State of incorporation
+- Entity type (operating, fund, etc.)
+- SEC filing category (large/small/non-accelerated filer)
+- Latest filing date and form type
+- Former company names
+- EIN (employer identification number)
+
+Known limitations:
+- Some very old/inactive companies may have minimal data
+- Phone numbers may be outdated
+- Website field is often empty in SEC data
+- Foreign companies may have non-US addresses
+
+Error handling:
+- HTTP 429 rate limits: exponential backoff with 3 retries
+- Network errors: 3 retries with increasing delay
+- Missing data: fields omitted rather than guessed
+- Progress saved every 50 records for resumability
