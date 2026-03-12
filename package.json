@@ -6,6 +6,7 @@
     "validate": "npx tsx validator/validate-scraper-output.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
     "agentmail": "^0.2.15",
     "cheerio": "^1.2.0",
     "playwright": "^1.40.0",
