@@ -60,7 +60,7 @@ You should see something like `v20.x.x`.
 
 ```bash
 git clone <repo-url>
-cd amsterdam
+cd scrappypuffle
 npm install
 ```
 
