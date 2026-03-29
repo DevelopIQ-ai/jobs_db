@@ -33,8 +33,8 @@ We use **Supabase** (a hosted Postgres database).
 
 - **Table name:** `ds_hiring_cafe`
 - **How data gets there:** `load-to-supabase.ts` reads the JSONL output and inserts each job as a row (batches of 500)
-- **Primary key:** Each job has a `job_id` from hiring.cafe that uniquely identifies it
-- **Connection:** Uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from your `.env.local` file
+- **Primary key:** The Supabase column is called `primary_key`. It stores the `job_id` value from hiring.cafe — this is what uniquely identifies each job.
+- **Connection:** Uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from your `.env` file
 
 The table already exists — you don't need to set it up.
 
@@ -76,12 +76,20 @@ npx playwright install chromium
 
 ### 1d. Set up environment variables
 
-Create a file called `.env.local` in the project root. Evan will give you the values:
+Create a file called `.env` in the project root (not `.env.local` — that's a Next.js thing and won't work here). Evan will give you the values:
 
 ```
 SUPABASE_URL=<ask Evan>
 SUPABASE_SERVICE_ROLE_KEY=<ask Evan>
 ```
+
+**Important:** `load-to-supabase.ts` needs to load this file. Open it and add this line at the very top:
+
+```ts
+import 'dotenv/config';
+```
+
+This tells Node.js to read your `.env` file and make those values available. Without this line, the Supabase connection will silently fail.
 
 ### 1e. Test the API connection
 
@@ -142,6 +150,8 @@ Page 0/150: +40 jobs | Total: 40 | ETA: 1min
 
 ### 2c. Verify the output
 
+> **Note:** These commands assume macOS or Linux. If you're on Windows, use Git Bash or WSL.
+
 ```bash
 # Count how many jobs were scraped
 wc -l output/us-jobs-full.jsonl
@@ -190,6 +200,7 @@ You should see a counter as it inserts rows in batches of 500.
 ### Milestone 2 is done when:
 - The scraper ran and produced a JSONL file with ~6k jobs
 - `load-to-supabase.ts` inserted them into Supabase without errors
+- **You've checked in with Evan before moving on.** Show him your output and get the green light before starting Milestone 3.
 
 ---
 
@@ -256,7 +267,7 @@ Each task needs to:
 
 - **Playwright on Trigger.dev:** The scraper uses a headless browser. Trigger.dev supports this but you may need to configure it — search their docs for Playwright / browser support.
 - **No local files:** The current scraper writes to a file on disk. On Trigger.dev's servers you won't have a persistent filesystem. You'll need to refactor the scraper to keep jobs in memory (an array) and pass them directly to the Supabase insert logic instead of writing/reading a file.
-- **Environment variables:** You'll need to add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your Trigger.dev project settings (not just `.env.local`).
+- **Environment variables:** You'll need to add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your Trigger.dev project settings.
 - **Timeouts:** Use your timing data from Milestone 3 to set appropriate timeouts for each task. A daily scrape (~6k jobs) is much faster than a weekly one (~30k+).
 
 ### 4e. Start small
