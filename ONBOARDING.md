@@ -33,8 +33,8 @@ We use **Supabase** (a hosted Postgres database).
 
 - **Table name:** `ds_hiring_cafe`
 - **How data gets there:** `load-to-supabase.ts` reads the JSONL output and inserts each job as a row (batches of 500)
-- **Primary key:** Each job has a `job_id` from hiring.cafe that uniquely identifies it
-- **Connection:** Uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from your `.env.local` file
+- **Primary key:** The Supabase column is called `primary_key`. It stores the `job_id` value from hiring.cafe — this is what uniquely identifies each job.
+- **Connection:** Uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from your `.env` file
 
 The table already exists — you don't need to set it up.
 
@@ -76,12 +76,20 @@ npx playwright install chromium
 
 ### 1d. Set up environment variables
 
-Create a file called `.env.local` in the project root. Evan will give you the values:
+Create a file called `.env` in the project root (not `.env.local` — that's a Next.js thing and won't work here). Evan will give you the values:
 
 ```
 SUPABASE_URL=<ask Evan>
 SUPABASE_SERVICE_ROLE_KEY=<ask Evan>
 ```
+
+**Important:** The scraper scripts need to load this file. Open both `scrape-full.ts` and `load-to-supabase.ts` and add this line at the very top of each file:
+
+```ts
+import 'dotenv/config';
+```
+
+This tells Node.js to read your `.env` file and make those values available. Without this line, the Supabase connection will silently fail.
 
 ### 1e. Test the API connection
 
@@ -141,6 +149,8 @@ Page 0/150: +40 jobs | Total: 40 | ETA: 1min
 ```
 
 ### 2c. Verify the output
+
+> **Note:** These commands assume macOS or Linux. If you're on Windows, use Git Bash or WSL.
 
 ```bash
 # Count how many jobs were scraped
