@@ -83,7 +83,7 @@ SUPABASE_URL=<ask Evan>
 SUPABASE_SERVICE_ROLE_KEY=<ask Evan>
 ```
 
-**Important:** The scraper scripts need to load this file. Open both `scrape-full.ts` and `load-to-supabase.ts` and add this line at the very top of each file:
+**Important:** `load-to-supabase.ts` needs to load this file. Open it and add this line at the very top:
 
 ```ts
 import 'dotenv/config';
@@ -200,6 +200,7 @@ You should see a counter as it inserts rows in batches of 500.
 ### Milestone 2 is done when:
 - The scraper ran and produced a JSONL file with ~6k jobs
 - `load-to-supabase.ts` inserted them into Supabase without errors
+- **You've checked in with Evan before moving on.** Show him your output and get the green light before starting Milestone 3.
 
 ---
 
@@ -266,7 +267,7 @@ Each task needs to:
 
 - **Playwright on Trigger.dev:** The scraper uses a headless browser. Trigger.dev supports this but you may need to configure it — search their docs for Playwright / browser support.
 - **No local files:** The current scraper writes to a file on disk. On Trigger.dev's servers you won't have a persistent filesystem. You'll need to refactor the scraper to keep jobs in memory (an array) and pass them directly to the Supabase insert logic instead of writing/reading a file.
-- **Environment variables:** You'll need to add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your Trigger.dev project settings (not just `.env.local`).
+- **Environment variables:** You'll need to add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your Trigger.dev project settings.
 - **Timeouts:** Use your timing data from Milestone 3 to set appropriate timeouts for each task. A daily scrape (~6k jobs) is much faster than a weekly one (~30k+).
 
 ### 4e. Start small
