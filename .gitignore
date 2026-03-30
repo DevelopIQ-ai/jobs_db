@@ -7,3 +7,6 @@ node_modules/
 
 # Git worktrees
 .worktrees/
+
+# Scraper cookies (contains Cloudflare session)
+cookies.json
