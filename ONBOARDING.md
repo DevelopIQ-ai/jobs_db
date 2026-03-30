@@ -197,6 +197,44 @@ npx tsx load-to-supabase.ts
 
 You should see a counter as it inserts rows in batches of 500.
 
+### 2e. Cloudflare bypass: what we know so far
+
+The direct-fetch scraper (`scrape-full-new.ts`) requires a `cf_clearance` cookie that a human must copy from their browser. This cookie expires every ~30 minutes to a few hours, which blocks full automation. We tested whether Playwright can solve Cloudflare's JS challenge automatically:
+
+| Approach | Result |
+|---|---|
+| **Headed Playwright** (visible browser window) | CF challenge auto-resolves in ~10 seconds |
+| Headless Playwright | Blocked — stays on challenge page indefinitely |
+| Headless + `playwright-extra` stealth plugin | Blocked |
+| Headless + `--headless=new` (Chrome's new headless mode) | Blocked |
+| Headless + Chrome channel + stealth + `--headless=new` | Blocked |
+
+**Key finding:** Cloudflare detects headless mode regardless of stealth tricks. Only a **headed** browser passes the challenge automatically.
+
+**Recommended path forward: Headed Playwright + xvfb.** In production (Railway/Docker), use xvfb (X Virtual Framebuffer) to create a fake display so the browser runs in headed mode without a physical monitor. This is a standard pattern used by CI systems. The scraper would:
+
+1. Launch **headed** Chromium on a virtual display via xvfb
+2. Navigate to hiring.cafe — CF challenge auto-resolves in ~10s
+3. Use the browser's authenticated session to call API endpoints (via `page.request` or `page.evaluate(fetch(...))`) — no manual cookies needed
+4. Insert results directly into Supabase (no local filesystem needed)
+
+Code changes needed in `scrape-full-new.ts`:
+- Replace `loadCookies()` / `buildHeaders()` with a Playwright browser launch + CF wait
+- Replace raw `fetch` in `fetchPage()` / `getTotalCount()` with browser-context requests
+- Replace `fs.createWriteStream` output with direct Supabase inserts
+- Store resume progress in Supabase instead of `progress.json` on disk
+
+Example Railway Dockerfile:
+
+```dockerfile
+FROM mcr.microsoft.com/playwright:v1.52.0-noble
+RUN apt-get update && apt-get install -y xvfb
+COPY . /app
+WORKDIR /app
+RUN npm install
+CMD xvfb-run node scraper.mjs
+```
+
 ### Milestone 2 is done when:
 - The scraper ran and produced a JSONL file with ~6k jobs
 - `load-to-supabase.ts` inserted them into Supabase without errors
