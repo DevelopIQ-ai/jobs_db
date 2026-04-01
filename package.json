@@ -3,13 +3,22 @@
   "version": "1.0.0",
   "description": "AI-powered web scraping pipeline",
   "scripts": {
-    "validate": "npx tsx validator/validate-scraper-output.ts"
+    "validate": "npx tsx validator/validate-scraper-output.ts",
+    "test:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api.ts",
+    "test:hiring-cafe:camoufox:headed": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headed.ts",
+    "test:hiring-cafe:camoufox:headless": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headless.ts",
+    "scrape:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full.ts",
+    "scrape:hiring-cafe:camoufox:headed": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headed.ts",
+    "scrape:hiring-cafe:camoufox:headless": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headless.ts",
+    "fetch:camoufox": "npx camoufox-js fetch"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
     "agentmail": "^0.2.15",
+    "camoufox-js": "^0.9.3",
     "cheerio": "^1.2.0",
     "playwright": "^1.40.0",
+    "playwright-core": "^1.59.0",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
     "yaml": "^2.3.4"

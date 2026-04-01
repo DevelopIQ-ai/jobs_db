@@ -10,3 +10,9 @@ node_modules/
 
 # Scraper cookies (contains Cloudflare session)
 cookies.json
+
+# Hiring Cafe scraper output
+data_in_progress/jobs/hiring_cafe/output/
+
+# Camoufox scraper output
+data_in_progress/jobs/hiring_cafe_camoufox/output/
