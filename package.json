@@ -4,16 +4,19 @@
   "description": "AI-powered web scraping pipeline",
   "scripts": {
     "validate": "npx tsx validator/validate-scraper-output.ts",
-    "test:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api.ts",
+    "test:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headless.ts",
     "test:hiring-cafe:camoufox:headed": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headed.ts",
     "test:hiring-cafe:camoufox:headless": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headless.ts",
-    "scrape:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full.ts",
+    "scrape:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headless.ts",
     "scrape:hiring-cafe:camoufox:headed": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headed.ts",
     "scrape:hiring-cafe:camoufox:headless": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headless.ts",
-    "fetch:camoufox": "npx camoufox-js fetch"
+    "fetch:camoufox": "npx camoufox-js fetch",
+    "dev:trigger": "npx trigger.dev dev --config trigger.config.ts",
+    "deploy:trigger": "npx trigger.dev deploy --config trigger.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
+    "@trigger.dev/sdk": "4.4.3",
     "agentmail": "^0.2.15",
     "camoufox-js": "^0.9.3",
     "cheerio": "^1.2.0",
@@ -24,8 +27,10 @@
     "yaml": "^2.3.4"
   },
   "devDependencies": {
+    "@trigger.dev/build": "4.4.3",
     "@types/node": "^20.10.0",
     "dotenv": "^17.3.1",
+    "trigger.dev": "4.4.3",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

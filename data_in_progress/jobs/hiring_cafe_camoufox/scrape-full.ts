@@ -1,15 +1,41 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Camoufox } from 'camoufox-js';
-import { PAGE_SIZE, fetchFilteredCount, fetchFilteredPage, openFilteredSearch, waitForCloudflare } from './helpers';
+import {
+  PAGE_SIZE,
+  encodeFilter,
+  buildSearchState,
+  fetchFilteredCount,
+  fetchFilteredPage,
+} from './helpers';
 
-const OUTPUT_DIR = path.join(__dirname, 'output');
-const OUTPUT_FILE = path.join(OUTPUT_DIR, 'us-jobs-full.jsonl');
-const PROGRESS_FILE = path.join(OUTPUT_DIR, 'progress.json');
-const DELAY_MS = 200;
+const DEFAULT_OUTPUT_DIR = path.join(__dirname, 'output');
+const DELAY_MS = 300;
 const MAX_EMPTY_PAGES = 3;
 const MAX_ERRORS = 10;
-const ALLOWED_WORKPLACE_TYPES = new Set(['Remote', 'Hybrid', 'Onsite']);
+
+export type ScrapeOptions = {
+  windowDays?: number;
+  maxPages?: number;
+  outputDir?: string;
+  freshStart?: boolean;
+  apiKey?: string;
+};
+
+export type ScrapeRunResult = {
+  totalWritten: number;
+  pagesScraped: number;
+  elapsedSec: number;
+  outputFile: string;
+  outputDir: string;
+  windowDays: number;
+};
+
+function getOutputPaths(outputDir: string) {
+  return {
+    outputFile: path.join(outputDir, 'us-jobs-full.jsonl'),
+    progressFile: path.join(outputDir, 'progress.json'),
+  };
+}
 
 function htmlToMarkdown(html: string): string {
   if (!html) return '';
@@ -72,164 +98,123 @@ function transformJob(job: any): object {
   };
 }
 
-function isUsJob(job: any): boolean {
-  const processed = job.v5_processed_job_data || {};
-  const workplaceCountries = processed.workplace_countries || [];
+export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Promise<ScrapeRunResult> {
+  const windowDays = options.windowDays ?? Number(process.env.WINDOW_DAYS ?? '1');
+  const maxPages = options.maxPages ?? Number(process.env.MAX_PAGES ?? '0');
+  const outputDir = options.outputDir ?? DEFAULT_OUTPUT_DIR;
+  const apiKey = options.apiKey ?? process.env.BRIGHTDATA_API_KEY;
+  const { outputFile, progressFile } = getOutputPaths(outputDir);
 
-  if (Array.isArray(workplaceCountries) && workplaceCountries.includes('US')) {
-    return true;
+  if (!apiKey) {
+    throw new Error('BRIGHTDATA_API_KEY is required (set env var or pass options.apiKey)');
   }
 
-  const fallbackValues = [
-    processed.formatted_workplace_location,
-    ...(processed.workplace_cities || []),
-    ...(processed.workplace_states || []),
-  ].filter(Boolean);
-
-  return fallbackValues.some((value: string) => /United States|\bUS\b/.test(value));
-}
-
-function isWithinWindow(job: any, windowDays: number): boolean {
-  const processed = job.v5_processed_job_data || {};
-  const publishMillis = processed.estimated_publish_date_millis
-    ?? Date.parse(processed.estimated_publish_date || 0);
-
-  if (typeof publishMillis !== 'number' || !Number.isFinite(publishMillis)) {
-    return false;
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  return publishMillis >= Date.now() - windowDays * 24 * 60 * 60 * 1000;
-}
-
-function hasAllowedWorkplaceType(job: any): boolean {
-  const processed = job.v5_processed_job_data || {};
-  return ALLOWED_WORKPLACE_TYPES.has(processed.workplace_type);
-}
-
-function matchesRequestedScope(job: any, windowDays: number): boolean {
-  return hasAllowedWorkplaceType(job) && isUsJob(job) && isWithinWindow(job, windowDays);
-}
-
-async function main() {
-  const windowDays = Number(process.argv[2] ?? process.env.WINDOW_DAYS ?? '1');
-  const headless = process.env.CAMOUFOX_HEADLESS !== '0';
-  const maxPages = Number(process.env.MAX_PAGES ?? '0');
-
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  if (options.freshStart) {
+    if (fs.existsSync(progressFile)) fs.unlinkSync(progressFile);
+    if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
   }
 
-  console.log('=== Full hiring.cafe scrape with Camoufox ===\n');
-  console.log(`windowDays=${windowDays}`);
-  console.log(`headless=${headless}\n`);
-  if (maxPages > 0) {
-    console.log(`maxPages=${maxPages}\n`);
-  }
+  const searchState = buildSearchState(windowDays);
+  const encodedFilter = encodeFilter(searchState);
 
-  const browser = await Camoufox({ headless });
+  console.log('=== hiring.cafe scrape via BrightData Web Unlocker ===\n');
+  console.log(`windowDays=${windowDays}  (site dateFetchedPastNDays=${searchState.dateFetchedPastNDays})`);
+  if (maxPages > 0) console.log(`maxPages=${maxPages}`);
+  console.log('');
 
+  // Fetch total count first
   try {
-    const page = await browser.newPage();
+    const countData = await fetchFilteredCount(apiKey, encodedFilter);
+    console.log(`Total jobs: ${countData.total?.toLocaleString()}`);
+    console.log(`Collapsed total: ${countData.collapsedTotal?.toLocaleString()}\n`);
+  } catch (err) {
+    console.log(`Count request failed: ${(err as Error).message}\n`);
+  }
 
-    let startPage = 0;
-    let totalWritten = 0;
-    if (fs.existsSync(PROGRESS_FILE)) {
-      const progress = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
-      startPage = progress.lastPage + 1;
-      totalWritten = progress.totalWritten;
-      console.log(`Resuming from page ${startPage} (${totalWritten} jobs already written)\n`);
-    } else {
-      fs.writeFileSync(OUTPUT_FILE, '');
+  let startPage = 0;
+  let totalWritten = 0;
+  if (fs.existsSync(progressFile)) {
+    const progress = JSON.parse(fs.readFileSync(progressFile, 'utf-8'));
+    startPage = progress.lastPage + 1;
+    totalWritten = progress.totalWritten;
+    console.log(`Resuming from page ${startPage} (${totalWritten} jobs already written)\n`);
+  } else {
+    fs.writeFileSync(outputFile, '');
+  }
+
+  const outputStream = fs.createWriteStream(outputFile, { flags: 'a' });
+  const startedAt = Date.now();
+  let pageNum = startPage;
+  let emptyPages = 0;
+  let errors = 0;
+
+  while (emptyPages < MAX_EMPTY_PAGES && errors < MAX_ERRORS) {
+    if (maxPages > 0 && pageNum - startPage >= maxPages) {
+      console.log(`Reached MAX_PAGES=${maxPages}, stopping.`);
+      break;
     }
-
-    await waitForCloudflare(page);
-    const { encodedFilter, initialResults, countData: capturedCountData } = await openFilteredSearch(page, windowDays);
 
     try {
-      if (capturedCountData) {
-        console.log(`Captured count total: ${capturedCountData.total?.toLocaleString()}`);
-        console.log(`Captured count collapsedTotal: ${capturedCountData.collapsedTotal?.toLocaleString()}`);
-      }
+      const jobs = await fetchFilteredPage(apiKey, encodedFilter, pageNum);
 
-      const countData = await fetchFilteredCount(page, encodedFilter);
-      console.log(`Count endpoint total: ${countData.total?.toLocaleString()}`);
-      console.log(`Count endpoint collapsedTotal: ${countData.collapsedTotal?.toLocaleString()}\n`);
-    } catch (error) {
-      console.log(`Count request failed: ${(error as Error).message}\n`);
-    }
+      if (jobs.length === 0) {
+        emptyPages++;
+        console.log(`Page ${pageNum}: 0 jobs (${emptyPages}/${MAX_EMPTY_PAGES} empty)`);
+      } else {
+        emptyPages = 0;
+        const transformed = jobs.map(transformJob);
 
-    const outputStream = fs.createWriteStream(OUTPUT_FILE, { flags: 'a' });
-    const startedAt = Date.now();
-    let pageNum = startPage;
-    let emptyPages = 0;
-    let errors = 0;
-
-    while (emptyPages < MAX_EMPTY_PAGES && errors < MAX_ERRORS) {
-      if (maxPages > 0 && pageNum - startPage >= maxPages) {
-        console.log(`Reached MAX_PAGES=${maxPages}, stopping early.`);
-        break;
-      }
-
-      try {
-        const jobs = pageNum === 0 && startPage === 0
-          ? initialResults
-          : await fetchFilteredPage(page, encodedFilter, pageNum);
-        const matchingJobs = jobs.filter((job: any) => matchesRequestedScope(job, windowDays));
-
-        if (matchingJobs.length === 0) {
-          emptyPages++;
-          console.log(`Page ${pageNum}: 0 kept out of ${jobs.length} (${emptyPages}/${MAX_EMPTY_PAGES} empty kept pages)`);
-        } else {
-          emptyPages = 0;
-          const transformedJobs = matchingJobs.map(transformJob);
-
-          for (const job of transformedJobs) {
-            outputStream.write(JSON.stringify(job) + '\n');
-          }
-
-          totalWritten += transformedJobs.length;
-
-          if (pageNum % 10 === 0 || pageNum < 5) {
-            const elapsedSec = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-            const droppedCount = jobs.length - matchingJobs.length;
-            console.log(`Page ${pageNum}: kept ${matchingJobs.length}/${jobs.length} jobs | Dropped: ${droppedCount} | Total written: ${totalWritten.toLocaleString()} | Elapsed: ${elapsedSec}s`);
-          }
-
-          fs.writeFileSync(PROGRESS_FILE, JSON.stringify({
-            lastPage: pageNum,
-            totalWritten,
-            timestamp: new Date().toISOString(),
-          }));
+        for (const job of transformed) {
+          outputStream.write(JSON.stringify(job) + '\n');
         }
 
-        pageNum++;
-        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-      } catch (error) {
-        errors++;
-        console.error(`Page ${pageNum}: ERROR - ${(error as Error).message} (${errors}/${MAX_ERRORS})`);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        totalWritten += transformed.length;
+
+        if (pageNum % 10 === 0 || pageNum < 5) {
+          const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+          console.log(`Page ${pageNum}: ${transformed.length} jobs | Total: ${totalWritten.toLocaleString()} | ${elapsed}s`);
+        }
+
+        fs.writeFileSync(progressFile, JSON.stringify({
+          lastPage: pageNum,
+          totalWritten,
+          timestamp: new Date().toISOString(),
+        }));
       }
+
+      pageNum++;
+      await new Promise(r => setTimeout(r, DELAY_MS));
+    } catch (err) {
+      errors++;
+      console.error(`Page ${pageNum}: ERROR - ${(err as Error).message} (${errors}/${MAX_ERRORS})`);
+      await new Promise(r => setTimeout(r, 2000));
     }
-
-    outputStream.close();
-
-    const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-    console.log('\n=== Complete ===');
-    console.log(`Total jobs written: ${totalWritten.toLocaleString()}`);
-    console.log(`Pages scraped this run: ${pageNum - startPage}`);
-    console.log(`Elapsed: ${elapsedSec}s`);
-    console.log(`Output file: ${OUTPUT_FILE}`);
-
-    if (emptyPages >= MAX_EMPTY_PAGES && fs.existsSync(PROGRESS_FILE)) {
-      fs.unlinkSync(PROGRESS_FILE);
-      console.log('Reached consecutive empty pages, treating scrape as complete.');
-    }
-  } finally {
-    await browser.close();
   }
-}
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+  outputStream.close();
+
+  const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+  console.log('\n=== Complete ===');
+  console.log(`Total jobs written: ${totalWritten.toLocaleString()}`);
+  console.log(`Pages scraped: ${pageNum - startPage}`);
+  console.log(`Elapsed: ${elapsedSec}s`);
+  console.log(`Output: ${outputFile}`);
+
+  if (emptyPages >= MAX_EMPTY_PAGES && fs.existsSync(progressFile)) {
+    fs.unlinkSync(progressFile);
+    console.log('Reached consecutive empty pages, scrape complete.');
+  }
+
+  return {
+    totalWritten,
+    pagesScraped: pageNum - startPage,
+    elapsedSec,
+    outputFile,
+    outputDir,
+    windowDays,
+  };
+}

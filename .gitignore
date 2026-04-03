@@ -8,6 +8,9 @@ node_modules/
 # Git worktrees
 .worktrees/
 
+# Trigger.dev local state
+.trigger/
+
 # Scraper cookies (contains Cloudflare session)
 cookies.json
 

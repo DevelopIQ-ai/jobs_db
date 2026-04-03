@@ -1,5 +1,4 @@
-process.env.CAMOUFOX_HEADLESS = '1';
+import 'dotenv/config';
+import { runHiringCafeFullScrape } from './scrape-full';
 
-(async () => {
-  await import('./scrape-full');
-})();
+runHiringCafeFullScrape().catch(console.error);

@@ -10,177 +10,96 @@ const US_LOCATION = {
   options: { flexible_regions: [] },
 };
 
+/* ------------------------------------------------------------------ */
+/*  Filter encoding                                                    */
+/* ------------------------------------------------------------------ */
+
 export function encodeFilter(filter: object): string {
   return Buffer.from(encodeURIComponent(JSON.stringify(filter))).toString('base64');
+}
+
+/**
+ * hiring.cafe uses internal values for dateFetchedPastNDays, NOT literal day counts.
+ */
+export const TIME_FILTER_MAP: Record<string, number> = {
+  '24h': 2, '3d': 4, '1w': 14, '2w': 21,
+  '3w': 29, '1m': 61, '2m': 91, '4m': 151, 'all': -1,
+};
+
+export function resolveTimeFilter(window: string | number): number {
+  if (typeof window === 'string' && window in TIME_FILTER_MAP) {
+    return TIME_FILTER_MAP[window];
+  }
+  return typeof window === 'number' ? window : 2;
+}
+
+export function daysToSiteValue(days: number): number {
+  if (days <= 1)  return 2;
+  if (days <= 3)  return 4;
+  if (days <= 7)  return 14;
+  if (days <= 14) return 21;
+  if (days <= 21) return 29;
+  if (days <= 30) return 61;
+  if (days <= 60) return 91;
+  if (days <= 120) return 151;
+  return -1;
 }
 
 export function buildSearchState(windowDays: number) {
   return {
     locations: [US_LOCATION],
     workplaceTypes: ['Remote', 'Hybrid', 'Onsite'],
-    dateFetchedPastNDays: windowDays,
+    dateFetchedPastNDays: daysToSiteValue(windowDays),
     searchQuery: '',
   };
 }
 
-export function buildSearchPageUrl(windowDays: number): string {
-  return `https://hiring.cafe/?searchState=${encodeURIComponent(JSON.stringify(buildSearchState(windowDays)))}`;
-}
+/* ------------------------------------------------------------------ */
+/*  BrightData Web Unlocker                                            */
+/* ------------------------------------------------------------------ */
 
-async function clickVisibleChallengeIframe(page: any): Promise<boolean> {
-  const selectors = [
-    'iframe[src*="challenges.cloudflare.com"]',
-    'iframe[src*="turnstile"]',
-    'iframe[title*="challenge" i]',
-    'iframe[title*="widget" i]',
-  ];
+const BD_API_URL = 'https://api.brightdata.com/request';
+const BD_ZONE = 'web_unlocker1';
 
-  for (const selector of selectors) {
-    const frames = page.locator(selector);
-    const count = await frames.count();
+export async function fetchViaBrightData(targetUrl: string, apiKey: string): Promise<any> {
+  const res = await fetch(BD_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      zone: BD_ZONE,
+      url: targetUrl,
+      format: 'raw',
+    }),
+  });
 
-    for (let index = 0; index < count; index++) {
-      const frame = frames.nth(index);
-      const box = await frame.boundingBox();
-
-      if (!box || box.width < 20 || box.height < 20) {
-        continue;
-      }
-
-      // Cloudflare's checkbox is usually near the left-middle of the iframe.
-      const clickX = box.x + Math.min(35, box.width / 2);
-      const clickY = box.y + box.height / 2;
-
-      await page.mouse.move(clickX, clickY, { steps: 8 });
-      await page.mouse.click(clickX, clickY);
-      return true;
-    }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`BrightData ${res.status}: ${body.substring(0, 300)}`);
   }
 
-  const widgetContainer = page.locator('#AOzYg6');
-  const widgetCount = await widgetContainer.count();
-  if (widgetCount > 0) {
-    const box = await widgetContainer.first().boundingBox();
-    if (box && box.width > 40 && box.height > 20) {
-      const clickX = box.x + Math.min(45, box.width / 6);
-      const clickY = box.y + box.height / 2;
-
-      await page.mouse.move(clickX, clickY, { steps: 8 });
-      await page.mouse.click(clickX, clickY);
-      return true;
-    }
-  }
-
-  return false;
+  return res.json();
 }
 
-export async function waitForCloudflare(page: any) {
-  const timeoutMs = Number(process.env.HC_CF_TIMEOUT_MS ?? '120000');
-  const startedAt = Date.now();
-  let clickedChallenge = false;
+/* ------------------------------------------------------------------ */
+/*  High-level API helpers                                             */
+/* ------------------------------------------------------------------ */
 
-  console.log('Opening hiring.cafe in Camoufox...');
-  await page.goto('https://hiring.cafe', { waitUntil: 'domcontentloaded', timeout: 90000 });
-
-  while (Date.now() - startedAt < timeoutMs) {
-    const title = await page.title();
-    const cookies = await page.context().cookies('https://hiring.cafe');
-    const hasClearance = cookies.some((cookie: { name: string }) => cookie.name === 'cf_clearance');
-    const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-
-    console.log(
-      `[${elapsedSec}s] title="${title}" cf_clearance=${hasClearance ? 'yes' : 'no'} url=${page.url()}`
-    );
-
-    if (hasClearance) {
-      await page.goto('https://hiring.cafe/', { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForTimeout(2000);
-      return;
-    }
-
-    if (!clickedChallenge || elapsedSec % 15 === 0) {
-      const didClick = await clickVisibleChallengeIframe(page);
-      if (didClick) {
-        clickedChallenge = true;
-        console.log('Attempted to click the Cloudflare challenge checkbox automatically.');
-        await page.waitForTimeout(3000);
-        continue;
-      }
-    }
-
-    await page.waitForTimeout(5000);
-  }
-
-  throw new Error('Cloudflare challenge did not clear in time.');
+export function buildCountUrl(encodedFilter: string): string {
+  return `https://hiring.cafe/api/search-jobs/get-total-count?s=${encodeURIComponent(encodedFilter)}&sv=control`;
 }
 
-export async function fetchJsonInPage(page: any, url: string) {
-  const result = await page.evaluate(async (targetUrl: string) => {
-    const response = await fetch(targetUrl, {
-      credentials: 'include',
-      headers: {
-        accept: '*/*',
-      },
-    });
-
-    return {
-      ok: response.ok,
-      status: response.status,
-      body: await response.text(),
-      url: response.url,
-    };
-  }, url);
-
-  if (!result.ok) {
-    throw new Error(`HTTP ${result.status} for ${url}`);
-  }
-
-  return JSON.parse(result.body);
+export function buildSearchUrl(encodedFilter: string, page: number): string {
+  return `https://hiring.cafe/api/search-jobs?s=${encodeURIComponent(encodedFilter)}&size=${PAGE_SIZE}&page=${page}&sv=control`;
 }
 
-export async function openFilteredSearch(page: any, windowDays: number) {
-  const targetUrl = buildSearchPageUrl(windowDays);
-  const searchPromise = page.waitForResponse((response: any) => {
-    const url = response.url();
-    return url.includes('/api/search-jobs?') && !url.includes('get-total-count');
-  }, { timeout: 90000 });
-  const countPromise = page.waitForResponse((response: any) => {
-    return response.url().includes('/api/search-jobs/get-total-count');
-  }, { timeout: 90000 }).catch(() => null);
-
-  console.log(`Navigating to filtered search page for past ${windowDays} day(s)...`);
-  await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
-
-  const searchResponse = await searchPromise;
-  const searchUrl = new URL(searchResponse.url());
-  const encodedFilter = searchUrl.searchParams.get('s') ?? encodeFilter(buildSearchState(windowDays));
-  const searchData = await searchResponse.json();
-
-  let countData: any = null;
-  const countResponse = await countPromise;
-  if (countResponse) {
-    try {
-      countData = await countResponse.json();
-    } catch {
-      countData = null;
-    }
-  }
-
-  return {
-    encodedFilter,
-    searchPageUrl: targetUrl,
-    initialResults: searchData.results || [],
-    countData,
-  };
+export async function fetchFilteredCount(apiKey: string, encodedFilter: string) {
+  return fetchViaBrightData(buildCountUrl(encodedFilter), apiKey);
 }
 
-export async function fetchFilteredPage(page: any, encodedFilter: string, pageNum: number) {
-  const url = `https://hiring.cafe/api/search-jobs?s=${encodeURIComponent(encodedFilter)}&size=${PAGE_SIZE}&page=${pageNum}&sv=control`;
-  const data = await fetchJsonInPage(page, url);
+export async function fetchFilteredPage(apiKey: string, encodedFilter: string, pageNum: number) {
+  const data = await fetchViaBrightData(buildSearchUrl(encodedFilter, pageNum), apiKey);
   return data.results || [];
-}
-
-export async function fetchFilteredCount(page: any, encodedFilter: string) {
-  const url = `https://hiring.cafe/api/search-jobs/get-total-count?s=${encodeURIComponent(encodedFilter)}&sv=control`;
-  return fetchJsonInPage(page, url);
 }
