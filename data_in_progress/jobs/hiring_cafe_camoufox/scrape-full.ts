@@ -11,7 +11,7 @@ import {
 
 const DEFAULT_OUTPUT_DIR = path.join(__dirname, 'output');
 const DELAY_BETWEEN_BATCHES_MS = 200;
-const PARALLEL_CONCURRENCY = 3;
+const PARALLEL_CONCURRENCY = 5;
 const MAX_EMPTY_BATCHES = 2;
 const MAX_ERRORS = 10;
 const SUPABASE_BATCH_SIZE = 500;
