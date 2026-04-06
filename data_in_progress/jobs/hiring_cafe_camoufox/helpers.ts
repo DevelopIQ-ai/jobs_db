@@ -1,4 +1,6 @@
-export const PAGE_SIZE = 40;
+export const DEFAULT_PAGE_SIZE = 250;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 3000;
 
 const US_LOCATION = {
   id: 'FxY1yZQBoEtHp_8UEq7V',
@@ -55,32 +57,57 @@ export function buildSearchState(windowDays: number) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  BrightData Web Unlocker                                            */
+/*  BrightData Web Unlocker (with retry + safe JSON parsing)           */
 /* ------------------------------------------------------------------ */
 
 const BD_API_URL = 'https://api.brightdata.com/request';
 const BD_ZONE = 'web_unlocker1';
 
-export async function fetchViaBrightData(targetUrl: string, apiKey: string): Promise<any> {
+async function bdRequest(targetUrl: string, apiKey: string): Promise<{ text: string; status: number }> {
   const res = await fetch(BD_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      zone: BD_ZONE,
-      url: targetUrl,
-      format: 'raw',
-    }),
+    body: JSON.stringify({ zone: BD_ZONE, url: targetUrl, format: 'raw' }),
   });
 
+  const text = await res.text();
+
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`BrightData ${res.status}: ${body.substring(0, 300)}`);
+    throw new Error(`BrightData HTTP ${res.status}: ${text.substring(0, 300)}`);
   }
 
-  return res.json();
+  return { text, status: res.status };
+}
+
+export async function fetchViaBrightData(targetUrl: string, apiKey: string): Promise<any> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { text } = await bdRequest(targetUrl, apiKey);
+
+      if (!text || text.length === 0) {
+        throw new Error('BrightData returned empty response body');
+      }
+
+      return JSON.parse(text);
+    } catch (err) {
+      lastError = err as Error;
+      const isLastAttempt = attempt === MAX_RETRIES;
+      if (isLastAttempt) break;
+
+      const label = lastError.message.includes('JSON')
+        ? 'JSON parse failed'
+        : lastError.message.substring(0, 80);
+      console.log(`  [retry ${attempt + 1}/${MAX_RETRIES}] ${label}`);
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+    }
+  }
+
+  throw lastError!;
 }
 
 /* ------------------------------------------------------------------ */
@@ -91,15 +118,15 @@ export function buildCountUrl(encodedFilter: string): string {
   return `https://hiring.cafe/api/search-jobs/get-total-count?s=${encodeURIComponent(encodedFilter)}&sv=control`;
 }
 
-export function buildSearchUrl(encodedFilter: string, page: number): string {
-  return `https://hiring.cafe/api/search-jobs?s=${encodeURIComponent(encodedFilter)}&size=${PAGE_SIZE}&page=${page}&sv=control`;
+export function buildSearchUrl(encodedFilter: string, page: number, size: number = DEFAULT_PAGE_SIZE): string {
+  return `https://hiring.cafe/api/search-jobs?s=${encodeURIComponent(encodedFilter)}&size=${size}&page=${page}&sv=control`;
 }
 
 export async function fetchFilteredCount(apiKey: string, encodedFilter: string) {
   return fetchViaBrightData(buildCountUrl(encodedFilter), apiKey);
 }
 
-export async function fetchFilteredPage(apiKey: string, encodedFilter: string, pageNum: number) {
-  const data = await fetchViaBrightData(buildSearchUrl(encodedFilter, pageNum), apiKey);
+export async function fetchFilteredPage(apiKey: string, encodedFilter: string, pageNum: number, size: number = DEFAULT_PAGE_SIZE) {
+  const data = await fetchViaBrightData(buildSearchUrl(encodedFilter, pageNum, size), apiKey);
   return data.results || [];
 }

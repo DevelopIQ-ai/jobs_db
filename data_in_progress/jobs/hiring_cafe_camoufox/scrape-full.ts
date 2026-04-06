@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
-  PAGE_SIZE,
+  DEFAULT_PAGE_SIZE,
   encodeFilter,
   buildSearchState,
   fetchFilteredCount,
@@ -10,8 +10,9 @@ import {
 } from './helpers';
 
 const DEFAULT_OUTPUT_DIR = path.join(__dirname, 'output');
-const DELAY_MS = 300;
-const MAX_EMPTY_PAGES = 3;
+const DELAY_BETWEEN_BATCHES_MS = 200;
+const PARALLEL_CONCURRENCY = 3;
+const MAX_EMPTY_BATCHES = 2;
 const MAX_ERRORS = 10;
 const SUPABASE_BATCH_SIZE = 500;
 const SUPABASE_TABLE = 'ds_hiring_cafe';
@@ -22,6 +23,7 @@ export type ScrapeOptions = {
   outputDir?: string;
   freshStart?: boolean;
   apiKey?: string;
+  pageSize?: number;
 };
 
 export type ScrapeRunResult = {
@@ -133,10 +135,20 @@ function toSupabaseRecord(job: Record<string, any>): Record<string, any> {
   };
 }
 
+function deduplicateByKey(rows: Record<string, any>[], key: string): Record<string, any>[] {
+  const map = new Map<string, Record<string, any>>();
+  for (const row of rows) {
+    if (row[key] != null) map.set(row[key], row);
+  }
+  return [...map.values()];
+}
+
 async function flushToSupabase(supabase: SupabaseClient, batch: Record<string, any>[]): Promise<number> {
   if (batch.length === 0) return 0;
-  const rows = batch.map(toSupabaseRecord);
-  const { error, count } = await supabase
+
+  const rows = deduplicateByKey(batch.map(toSupabaseRecord), 'primary_key');
+
+  const { error } = await supabase
     .from(SUPABASE_TABLE)
     .upsert(rows, { onConflict: 'primary_key', ignoreDuplicates: false })
     .select('primary_key');
@@ -145,7 +157,20 @@ async function flushToSupabase(supabase: SupabaseClient, batch: Record<string, a
     console.error(`Supabase upsert error: ${error.message}`);
     return 0;
   }
-  return batch.length;
+  return rows.length;
+}
+
+type PageResult = { page: number; jobs: any[]; error?: string };
+
+async function fetchPageSafe(
+  apiKey: string, encodedFilter: string, page: number, size: number
+): Promise<PageResult> {
+  try {
+    const jobs = await fetchFilteredPage(apiKey, encodedFilter, page, size);
+    return { page, jobs };
+  } catch (err) {
+    return { page, jobs: [], error: (err as Error).message };
+  }
 }
 
 export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Promise<ScrapeRunResult> {
@@ -153,13 +178,14 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   const maxPages = options.maxPages ?? Number(process.env.MAX_PAGES ?? '0');
   const outputDir = options.outputDir ?? DEFAULT_OUTPUT_DIR;
   const apiKey = options.apiKey ?? process.env.BRIGHTDATA_API_KEY;
+  const envSize = Number(process.env.HIRING_CAFE_PAGE_SIZE || '0');
+  const requestedSize = options.pageSize ?? (envSize > 0 ? envSize : DEFAULT_PAGE_SIZE);
   const { outputFile, progressFile } = getOutputPaths(outputDir);
 
   if (!apiKey) {
     throw new Error('BRIGHTDATA_API_KEY is required (set env var or pass options.apiKey)');
   }
 
-  // Supabase setup (optional -- if env vars not set, skips DB writes)
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase = supabaseUrl && supabaseKey
@@ -180,6 +206,7 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
 
   console.log('=== hiring.cafe scrape via BrightData Web Unlocker ===\n');
   console.log(`windowDays=${windowDays}  (site dateFetchedPastNDays=${searchState.dateFetchedPastNDays})`);
+  console.log(`pageSize=${requestedSize}  concurrency=${PARALLEL_CONCURRENCY}`);
   console.log(`supabase=${supabase ? 'connected' : 'skipped (no env vars)'}`);
   if (maxPages > 0) console.log(`maxPages=${maxPages}`);
   console.log('');
@@ -206,68 +233,121 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   const outputStream = fs.createWriteStream(outputFile, { flags: 'a' });
   const startedAt = Date.now();
   let pageNum = startPage;
-  let emptyPages = 0;
-  let errors = 0;
+  let consecutiveEmptyBatches = 0;
+  let totalErrors = 0;
   let totalUpserted = 0;
   let supabaseBatch: Record<string, any>[] = [];
+  let effectiveSize = requestedSize;
 
-  while (emptyPages < MAX_EMPTY_PAGES && errors < MAX_ERRORS) {
+  // Auto-detect API size cap: fetch page 0 solo, check actual vs requested
+  {
+    console.log(`Probing page 0 to detect API size cap (requested ${requestedSize})...`);
+    const probe = await fetchPageSafe(apiKey, encodedFilter, startPage, requestedSize);
+    if (probe.error) {
+      console.log(`Probe failed: ${probe.error}`);
+    } else {
+      const actual = probe.jobs.length;
+      console.log(`Page 0 returned ${actual} jobs`);
+      if (actual > 0 && actual < requestedSize) {
+        effectiveSize = actual;
+        console.log(`API caps at ~${actual} jobs/page, adjusting effective size`);
+      }
+
+      // Process probe results
+      const transformed = probe.jobs.map(transformJob);
+      const deduped = deduplicateByKey(transformed, 'job_id');
+      for (const job of deduped) outputStream.write(JSON.stringify(job) + '\n');
+
+      if (supabase) {
+        supabaseBatch.push(...deduped);
+        if (supabaseBatch.length >= SUPABASE_BATCH_SIZE) {
+          totalUpserted += await flushToSupabase(supabase, supabaseBatch);
+          supabaseBatch = [];
+        }
+      }
+
+      totalWritten += deduped.length;
+      const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      console.log(`Page ${pageNum}: ${deduped.length} jobs | Total: ${totalWritten.toLocaleString()} | ${elapsed}s\n`);
+    }
+    pageNum++;
+  }
+
+  console.log(`Fetching remaining pages in batches of ${PARALLEL_CONCURRENCY} (size=${effectiveSize})...\n`);
+
+  while (consecutiveEmptyBatches < MAX_EMPTY_BATCHES && totalErrors < MAX_ERRORS) {
     if (maxPages > 0 && pageNum - startPage >= maxPages) {
       console.log(`Reached MAX_PAGES=${maxPages}, stopping.`);
       break;
     }
 
-    try {
-      const jobs = await fetchFilteredPage(apiKey, encodedFilter, pageNum);
+    // Build a batch of parallel page fetches
+    const batchPages: number[] = [];
+    for (let i = 0; i < PARALLEL_CONCURRENCY; i++) {
+      const p = pageNum + i;
+      if (maxPages > 0 && p - startPage >= maxPages) break;
+      batchPages.push(p);
+    }
+    if (batchPages.length === 0) break;
 
-      if (jobs.length === 0) {
-        emptyPages++;
-        console.log(`Page ${pageNum}: 0 jobs (${emptyPages}/${MAX_EMPTY_PAGES} empty)`);
-      } else {
-        emptyPages = 0;
-        const transformed = jobs.map(transformJob);
+    const results = await Promise.all(
+      batchPages.map(p => fetchPageSafe(apiKey, encodedFilter, p, effectiveSize))
+    );
 
-        for (const job of transformed) {
-          outputStream.write(JSON.stringify(job) + '\n');
-        }
+    let batchJobCount = 0;
+    let batchHadError = false;
 
-        if (supabase) {
-          supabaseBatch.push(...transformed);
-          if (supabaseBatch.length >= SUPABASE_BATCH_SIZE) {
-            const upserted = await flushToSupabase(supabase, supabaseBatch);
-            totalUpserted += upserted;
-            supabaseBatch = [];
-          }
-        }
-
-        totalWritten += transformed.length;
-
-        if (pageNum % 10 === 0 || pageNum < 5) {
-          const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-          const dbInfo = supabase ? ` | DB: ${totalUpserted.toLocaleString()}` : '';
-          console.log(`Page ${pageNum}: ${transformed.length} jobs | Total: ${totalWritten.toLocaleString()}${dbInfo} | ${elapsed}s`);
-        }
-
-        fs.writeFileSync(progressFile, JSON.stringify({
-          lastPage: pageNum,
-          totalWritten,
-          timestamp: new Date().toISOString(),
-        }));
+    for (const res of results) {
+      if (res.error) {
+        totalErrors++;
+        batchHadError = true;
+        console.error(`Page ${res.page}: ERROR - ${res.error} (${totalErrors}/${MAX_ERRORS})`);
+        continue;
       }
 
-      pageNum++;
-      await new Promise(r => setTimeout(r, DELAY_MS));
-    } catch (err) {
-      errors++;
-      console.error(`Page ${pageNum}: ERROR - ${(err as Error).message} (${errors}/${MAX_ERRORS})`);
-      await new Promise(r => setTimeout(r, 2000));
+      if (res.jobs.length === 0) continue;
+
+      const transformed = res.jobs.map(transformJob);
+      const deduped = deduplicateByKey(transformed, 'job_id');
+
+      for (const job of deduped) outputStream.write(JSON.stringify(job) + '\n');
+
+      if (supabase) supabaseBatch.push(...deduped);
+
+      totalWritten += deduped.length;
+      batchJobCount += deduped.length;
     }
+
+    // Flush Supabase if batch is big enough
+    if (supabase && supabaseBatch.length >= SUPABASE_BATCH_SIZE) {
+      totalUpserted += await flushToSupabase(supabase, supabaseBatch);
+      supabaseBatch = [];
+    }
+
+    if (batchJobCount === 0 && !batchHadError) {
+      consecutiveEmptyBatches++;
+      console.log(`Batch pages ${batchPages[0]}-${batchPages[batchPages.length - 1]}: 0 jobs (${consecutiveEmptyBatches}/${MAX_EMPTY_BATCHES} empty)`);
+    } else {
+      consecutiveEmptyBatches = 0;
+      const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      const dbInfo = supabase ? ` | DB: ${totalUpserted.toLocaleString()}` : '';
+      console.log(`Batch pages ${batchPages[0]}-${batchPages[batchPages.length - 1]}: ${batchJobCount} jobs | Total: ${totalWritten.toLocaleString()}${dbInfo} | ${elapsed}s`);
+    }
+
+    // Save progress after each batch
+    fs.writeFileSync(progressFile, JSON.stringify({
+      lastPage: batchPages[batchPages.length - 1],
+      totalWritten,
+      timestamp: new Date().toISOString(),
+    }));
+
+    pageNum += batchPages.length;
+    await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
   }
 
   // Flush remaining Supabase batch
   if (supabase && supabaseBatch.length > 0) {
-    const upserted = await flushToSupabase(supabase, supabaseBatch);
-    totalUpserted += upserted;
+    totalUpserted += await flushToSupabase(supabase, supabaseBatch);
   }
 
   outputStream.close();
@@ -277,12 +357,13 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   console.log(`Total jobs written: ${totalWritten.toLocaleString()}`);
   if (supabase) console.log(`Total upserted to Supabase: ${totalUpserted.toLocaleString()}`);
   console.log(`Pages scraped: ${pageNum - startPage}`);
+  console.log(`Errors: ${totalErrors}`);
   console.log(`Elapsed: ${elapsedSec}s`);
   console.log(`Output: ${outputFile}`);
 
-  if (emptyPages >= MAX_EMPTY_PAGES && fs.existsSync(progressFile)) {
+  if (consecutiveEmptyBatches >= MAX_EMPTY_BATCHES && fs.existsSync(progressFile)) {
     fs.unlinkSync(progressFile);
-    console.log('Reached consecutive empty pages, scrape complete.');
+    console.log('Reached consecutive empty batches, scrape complete.');
   }
 
   return {
