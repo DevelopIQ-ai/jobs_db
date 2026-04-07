@@ -4,9 +4,6 @@
   "description": "AI-powered web scraping pipeline",
   "scripts": {
     "validate": "npx tsx validator/validate-scraper-output.ts",
-    "test:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headless.ts",
-    "test:hiring-cafe:camoufox:headed": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headed.ts",
-    "test:hiring-cafe:camoufox:headless": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/test-api-headless.ts",
     "scrape:hiring-cafe:camoufox": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headless.ts",
     "scrape:hiring-cafe:camoufox:headed": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headed.ts",
     "scrape:hiring-cafe:camoufox:headless": "npx tsx data_in_progress/jobs/hiring_cafe_camoufox/scrape-full-headless.ts",
