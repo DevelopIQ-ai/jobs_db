@@ -1,6 +1,7 @@
 export const DEFAULT_PAGE_SIZE = 250;
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 3000;
+const MAX_RETRIES = 4;
+const BASE_RETRY_DELAY_MS = 5000;
+const REQUEST_TIMEOUT_MS = 60_000;
 
 const US_LOCATION = {
   id: 'FxY1yZQBoEtHp_8UEq7V',
@@ -57,29 +58,53 @@ export function buildSearchState(windowDays: number) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  BrightData Web Unlocker (with retry + safe JSON parsing)           */
+/*  BrightData Web Unlocker (with retry + backoff + timeout)           */
 /* ------------------------------------------------------------------ */
 
 const BD_API_URL = 'https://api.brightdata.com/request';
 const BD_ZONE = 'web_unlocker1';
 
+function retryDelay(attempt: number): number {
+  const exponential = BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
+  const jitter = Math.random() * BASE_RETRY_DELAY_MS;
+  return exponential + jitter;
+}
+
+function looksLikeHtml(text: string): boolean {
+  const trimmed = text.trimStart().substring(0, 200).toLowerCase();
+  return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html') || trimmed.includes('<head');
+}
+
 async function bdRequest(targetUrl: string, apiKey: string): Promise<{ text: string; status: number }> {
-  const res = await fetch(BD_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ zone: BD_ZONE, url: targetUrl, format: 'raw' }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const text = await res.text();
+  try {
+    const res = await fetch(BD_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ zone: BD_ZONE, url: targetUrl, format: 'raw' }),
+      signal: controller.signal,
+    });
 
-  if (!res.ok) {
-    throw new Error(`BrightData HTTP ${res.status}: ${text.substring(0, 300)}`);
+    const text = await res.text();
+
+    if (!res.ok) {
+      throw new Error(`BrightData HTTP ${res.status} (len=${text.length}): ${text.substring(0, 300)}`);
+    }
+
+    return { text, status: res.status };
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error(`BrightData request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return { text, status: res.status };
 }
 
 export async function fetchViaBrightData(targetUrl: string, apiKey: string): Promise<any> {
@@ -93,17 +118,22 @@ export async function fetchViaBrightData(targetUrl: string, apiKey: string): Pro
         throw new Error('BrightData returned empty response body');
       }
 
+      if (looksLikeHtml(text)) {
+        throw new Error(`BrightData returned HTML instead of JSON (len=${text.length}, starts: ${text.substring(0, 120)})`);
+      }
+
       return JSON.parse(text);
     } catch (err) {
       lastError = err as Error;
       const isLastAttempt = attempt === MAX_RETRIES;
       if (isLastAttempt) break;
 
+      const delay = retryDelay(attempt);
       const label = lastError.message.includes('JSON')
         ? 'JSON parse failed'
-        : lastError.message.substring(0, 80);
-      console.log(`  [retry ${attempt + 1}/${MAX_RETRIES}] ${label}`);
-      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        : lastError.message.substring(0, 100);
+      console.log(`  [retry ${attempt + 1}/${MAX_RETRIES}] ${label} (waiting ${Math.round(delay / 1000)}s)`);
+      await new Promise(r => setTimeout(r, delay));
     }
   }
 

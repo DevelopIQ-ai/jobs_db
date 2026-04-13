@@ -10,12 +10,19 @@ import {
 } from './helpers';
 
 const DEFAULT_OUTPUT_DIR = path.join(__dirname, 'output');
-const DELAY_BETWEEN_BATCHES_MS = 200;
-const PARALLEL_CONCURRENCY = 5;
+const DELAY_BETWEEN_BATCHES_MS = 1000;
+const DEFAULT_CONCURRENCY = 3;
+const MAX_CONCURRENCY = 5;
+const MIN_CONCURRENCY = 1;
 const MAX_EMPTY_BATCHES = 2;
-const MAX_ERRORS = 10;
+const MAX_CONSECUTIVE_FAILED_BATCHES = 3;
 const SUPABASE_BATCH_SIZE = 500;
 const SUPABASE_TABLE = 'ds_hiring_cafe';
+const SUPABASE_MAX_RETRIES = 3;
+const SUPABASE_RETRY_BASE_MS = 2000;
+const PROBE_MAX_RETRIES = 3;
+const PROBE_RETRY_BASE_MS = 10_000;
+const MAX_ELAPSED_MS = 50 * 60 * 1000;
 
 export type ScrapeOptions = {
   windowDays?: number;
@@ -24,6 +31,7 @@ export type ScrapeOptions = {
   freshStart?: boolean;
   apiKey?: string;
   pageSize?: number;
+  maxElapsedMs?: number;
 };
 
 export type ScrapeRunResult = {
@@ -34,6 +42,8 @@ export type ScrapeRunResult = {
   outputFile: string;
   outputDir: string;
   windowDays: number;
+  totalErrors: number;
+  exitReason: string;
 };
 
 function getOutputPaths(outputDir: string) {
@@ -148,16 +158,25 @@ async function flushToSupabase(supabase: SupabaseClient, batch: Record<string, a
 
   const rows = deduplicateByKey(batch.map(toSupabaseRecord), 'primary_key');
 
-  const { error } = await supabase
-    .from(SUPABASE_TABLE)
-    .upsert(rows, { onConflict: 'primary_key', ignoreDuplicates: false })
-    .select('primary_key');
+  for (let attempt = 0; attempt < SUPABASE_MAX_RETRIES; attempt++) {
+    const { error } = await supabase
+      .from(SUPABASE_TABLE)
+      .upsert(rows, { onConflict: 'primary_key', ignoreDuplicates: false })
+      .select('primary_key');
 
-  if (error) {
-    console.error(`Supabase upsert error: ${error.message}`);
-    return 0;
+    if (!error) return rows.length;
+
+    const isLast = attempt === SUPABASE_MAX_RETRIES - 1;
+    const delay = SUPABASE_RETRY_BASE_MS * Math.pow(2, attempt);
+    if (isLast) {
+      console.error(`Supabase upsert failed after ${SUPABASE_MAX_RETRIES} attempts: ${error.message}`);
+      return 0;
+    }
+    console.warn(`Supabase upsert error (attempt ${attempt + 1}/${SUPABASE_MAX_RETRIES}): ${error.message} — retrying in ${delay / 1000}s`);
+    await new Promise(r => setTimeout(r, delay));
   }
-  return rows.length;
+
+  return 0;
 }
 
 type PageResult = { page: number; jobs: any[]; error?: string };
@@ -180,6 +199,7 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   const apiKey = options.apiKey ?? process.env.BRIGHTDATA_API_KEY;
   const envSize = Number(process.env.HIRING_CAFE_PAGE_SIZE || '0');
   const requestedSize = options.pageSize ?? (envSize > 0 ? envSize : DEFAULT_PAGE_SIZE);
+  const maxElapsedMs = options.maxElapsedMs ?? MAX_ELAPSED_MS;
   const { outputFile, progressFile } = getOutputPaths(outputDir);
 
   if (!apiKey) {
@@ -189,7 +209,12 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase = supabaseUrl && supabaseKey
-    ? createClient(supabaseUrl, supabaseKey)
+    ? createClient(supabaseUrl, supabaseKey, {
+        db: { schema: 'public' },
+        global: {
+          headers: { 'x-statement-timeout': '30000' },
+        },
+      })
     : null;
 
   if (!fs.existsSync(outputDir)) {
@@ -204,10 +229,13 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   const searchState = buildSearchState(windowDays);
   const encodedFilter = encodeFilter(searchState);
 
+  let concurrency = DEFAULT_CONCURRENCY;
+
   console.log('=== hiring.cafe scrape via BrightData Web Unlocker ===\n');
   console.log(`windowDays=${windowDays}  (site dateFetchedPastNDays=${searchState.dateFetchedPastNDays})`);
-  console.log(`pageSize=${requestedSize}  concurrency=${PARALLEL_CONCURRENCY}`);
+  console.log(`pageSize=${requestedSize}  concurrency=${concurrency} (adaptive ${MIN_CONCURRENCY}-${MAX_CONCURRENCY})`);
   console.log(`supabase=${supabase ? 'connected' : 'skipped (no env vars)'}`);
+  console.log(`timeLimit=${Math.round(maxElapsedMs / 60_000)}min`);
   if (maxPages > 0) console.log(`maxPages=${maxPages}`);
   console.log('');
 
@@ -234,56 +262,83 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   const startedAt = Date.now();
   let pageNum = startPage;
   let consecutiveEmptyBatches = 0;
+  let consecutiveFailedBatches = 0;
   let totalErrors = 0;
   let totalUpserted = 0;
   let supabaseBatch: Record<string, any>[] = [];
   let effectiveSize = requestedSize;
+  let exitReason = 'natural';
 
-  // Auto-detect API size cap: fetch page 0 solo, check actual vs requested
-  {
+  // --- Probe with retries ---
+  let probeSucceeded = false;
+  for (let probeAttempt = 0; probeAttempt < PROBE_MAX_RETRIES; probeAttempt++) {
+    if (probeAttempt > 0) {
+      const probeDelay = PROBE_RETRY_BASE_MS * Math.pow(2, probeAttempt - 1);
+      console.log(`Probe retry ${probeAttempt}/${PROBE_MAX_RETRIES - 1} — waiting ${probeDelay / 1000}s before retry...`);
+      await new Promise(r => setTimeout(r, probeDelay));
+    }
+
     console.log(`Probing page 0 to detect API size cap (requested ${requestedSize})...`);
     const probe = await fetchPageSafe(apiKey, encodedFilter, startPage, requestedSize);
+
     if (probe.error) {
-      console.log(`Probe failed: ${probe.error}`);
-    } else {
-      const actual = probe.jobs.length;
-      console.log(`Page 0 returned ${actual} jobs`);
-      if (actual > 0 && actual < requestedSize) {
-        effectiveSize = actual;
-        console.log(`API caps at ~${actual} jobs/page, adjusting effective size`);
-      }
-
-      // Process probe results
-      const transformed = probe.jobs.map(transformJob);
-      const deduped = deduplicateByKey(transformed, 'job_id');
-      for (const job of deduped) outputStream.write(JSON.stringify(job) + '\n');
-
-      if (supabase) {
-        supabaseBatch.push(...deduped);
-        if (supabaseBatch.length >= SUPABASE_BATCH_SIZE) {
-          totalUpserted += await flushToSupabase(supabase, supabaseBatch);
-          supabaseBatch = [];
-        }
-      }
-
-      totalWritten += deduped.length;
-      const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-      console.log(`Page ${pageNum}: ${deduped.length} jobs | Total: ${totalWritten.toLocaleString()} | ${elapsed}s\n`);
+      console.log(`Probe attempt ${probeAttempt + 1} failed: ${probe.error}`);
+      continue;
     }
-    pageNum++;
+
+    probeSucceeded = true;
+    const actual = probe.jobs.length;
+    console.log(`Page 0 returned ${actual} jobs`);
+    if (actual > 0 && actual < requestedSize) {
+      effectiveSize = actual;
+      console.log(`API caps at ~${actual} jobs/page, adjusting effective size`);
+    }
+
+    const transformed = probe.jobs.map(transformJob);
+    const deduped = deduplicateByKey(transformed, 'job_id');
+    for (const job of deduped) outputStream.write(JSON.stringify(job) + '\n');
+
+    if (supabase) {
+      supabaseBatch.push(...deduped);
+      if (supabaseBatch.length >= SUPABASE_BATCH_SIZE) {
+        totalUpserted += await flushToSupabase(supabase, supabaseBatch);
+        supabaseBatch = [];
+      }
+    }
+
+    totalWritten += deduped.length;
+    const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    console.log(`Page ${pageNum}: ${deduped.length} jobs | Total: ${totalWritten.toLocaleString()} | ${elapsed}s\n`);
+    break;
   }
 
-  console.log(`Fetching remaining pages in batches of ${PARALLEL_CONCURRENCY} (size=${effectiveSize})...\n`);
+  if (!probeSucceeded) {
+    console.warn(`All ${PROBE_MAX_RETRIES} probe attempts failed — proceeding to main loop with default page size`);
+  }
+  pageNum++;
 
-  while (consecutiveEmptyBatches < MAX_EMPTY_BATCHES && totalErrors < MAX_ERRORS) {
+  console.log(`Fetching remaining pages in batches of ${concurrency} (size=${effectiveSize})...\n`);
+
+  while (
+    consecutiveEmptyBatches < MAX_EMPTY_BATCHES &&
+    consecutiveFailedBatches < MAX_CONSECUTIVE_FAILED_BATCHES
+  ) {
+    // --- Time guard ---
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs >= maxElapsedMs) {
+      exitReason = `time_limit_${Math.round(maxElapsedMs / 60_000)}min`;
+      console.log(`\nTime limit reached (${Math.round(elapsedMs / 60_000)}min elapsed, limit ${Math.round(maxElapsedMs / 60_000)}min). Flushing and exiting gracefully.`);
+      break;
+    }
+
     if (maxPages > 0 && pageNum - startPage >= maxPages) {
+      exitReason = 'max_pages';
       console.log(`Reached MAX_PAGES=${maxPages}, stopping.`);
       break;
     }
 
-    // Build a batch of parallel page fetches
     const batchPages: number[] = [];
-    for (let i = 0; i < PARALLEL_CONCURRENCY; i++) {
+    for (let i = 0; i < concurrency; i++) {
       const p = pageNum + i;
       if (maxPages > 0 && p - startPage >= maxPages) break;
       batchPages.push(p);
@@ -295,13 +350,13 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
     );
 
     let batchJobCount = 0;
-    let batchHadError = false;
+    let batchErrorCount = 0;
 
     for (const res of results) {
       if (res.error) {
         totalErrors++;
-        batchHadError = true;
-        console.error(`Page ${res.page}: ERROR - ${res.error} (${totalErrors}/${MAX_ERRORS})`);
+        batchErrorCount++;
+        console.error(`Page ${res.page}: ERROR - ${res.error} (total errors: ${totalErrors})`);
         continue;
       }
 
@@ -318,23 +373,54 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
       batchJobCount += deduped.length;
     }
 
-    // Flush Supabase if batch is big enough
-    if (supabase && supabaseBatch.length >= SUPABASE_BATCH_SIZE) {
+    // --- Flush Supabase after every batch that got data ---
+    if (supabase && supabaseBatch.length > 0) {
       totalUpserted += await flushToSupabase(supabase, supabaseBatch);
       supabaseBatch = [];
     }
 
-    if (batchJobCount === 0 && !batchHadError) {
+    const allFailed = batchErrorCount === batchPages.length;
+    const majorityFailed = batchErrorCount > batchPages.length / 2;
+
+    if (allFailed) {
+      consecutiveFailedBatches++;
+      consecutiveEmptyBatches = 0;
+      const backoffMs = DELAY_BETWEEN_BATCHES_MS * 5 * consecutiveFailedBatches;
+      console.log(`Batch pages ${batchPages[0]}-${batchPages[batchPages.length - 1]}: ALL FAILED (${consecutiveFailedBatches}/${MAX_CONSECUTIVE_FAILED_BATCHES} consecutive) — backing off ${Math.round(backoffMs / 1000)}s`);
+
+      // Drop concurrency to minimum under pressure
+      concurrency = MIN_CONCURRENCY;
+      console.log(`  Concurrency reduced to ${concurrency}`);
+
+      pageNum += batchPages.length;
+      fs.writeFileSync(progressFile, JSON.stringify({ lastPage: batchPages[batchPages.length - 1], totalWritten, timestamp: new Date().toISOString() }));
+      await new Promise(r => setTimeout(r, backoffMs));
+      continue;
+    }
+
+    // Reset consecutive failed batches on any success
+    consecutiveFailedBatches = 0;
+
+    if (majorityFailed) {
+      // Reduce concurrency but don't reset the fail streak
+      concurrency = Math.max(MIN_CONCURRENCY, concurrency - 1);
+      console.log(`  Majority of batch failed, concurrency reduced to ${concurrency}`);
+    } else if (batchErrorCount === 0 && concurrency < MAX_CONCURRENCY) {
+      // Gradually restore concurrency on clean batches
+      concurrency = Math.min(MAX_CONCURRENCY, concurrency + 1);
+    }
+
+    if (batchJobCount === 0 && batchErrorCount === 0) {
       consecutiveEmptyBatches++;
       console.log(`Batch pages ${batchPages[0]}-${batchPages[batchPages.length - 1]}: 0 jobs (${consecutiveEmptyBatches}/${MAX_EMPTY_BATCHES} empty)`);
     } else {
       consecutiveEmptyBatches = 0;
       const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
       const dbInfo = supabase ? ` | DB: ${totalUpserted.toLocaleString()}` : '';
-      console.log(`Batch pages ${batchPages[0]}-${batchPages[batchPages.length - 1]}: ${batchJobCount} jobs | Total: ${totalWritten.toLocaleString()}${dbInfo} | ${elapsed}s`);
+      const errInfo = batchErrorCount > 0 ? ` | ${batchErrorCount} errors` : '';
+      console.log(`Batch pages ${batchPages[0]}-${batchPages[batchPages.length - 1]}: ${batchJobCount} jobs | Total: ${totalWritten.toLocaleString()}${dbInfo}${errInfo} | conc=${concurrency} | ${elapsed}s`);
     }
 
-    // Save progress after each batch
     fs.writeFileSync(progressFile, JSON.stringify({
       lastPage: batchPages[batchPages.length - 1],
       totalWritten,
@@ -345,8 +431,15 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
     await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
   }
 
-  // Flush remaining Supabase batch
+  if (consecutiveFailedBatches >= MAX_CONSECUTIVE_FAILED_BATCHES) {
+    exitReason = 'consecutive_failed_batches';
+  } else if (consecutiveEmptyBatches >= MAX_EMPTY_BATCHES && exitReason === 'natural') {
+    exitReason = 'empty_batches_complete';
+  }
+
+  // Final Supabase flush
   if (supabase && supabaseBatch.length > 0) {
+    console.log(`Flushing final ${supabaseBatch.length} records to Supabase...`);
     totalUpserted += await flushToSupabase(supabase, supabaseBatch);
   }
 
@@ -358,10 +451,11 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
   if (supabase) console.log(`Total upserted to Supabase: ${totalUpserted.toLocaleString()}`);
   console.log(`Pages scraped: ${pageNum - startPage}`);
   console.log(`Errors: ${totalErrors}`);
+  console.log(`Exit reason: ${exitReason}`);
   console.log(`Elapsed: ${elapsedSec}s`);
   console.log(`Output: ${outputFile}`);
 
-  if (consecutiveEmptyBatches >= MAX_EMPTY_BATCHES && fs.existsSync(progressFile)) {
+  if (exitReason === 'empty_batches_complete' && fs.existsSync(progressFile)) {
     fs.unlinkSync(progressFile);
     console.log('Reached consecutive empty batches, scrape complete.');
   }
@@ -374,5 +468,7 @@ export async function runHiringCafeFullScrape(options: ScrapeOptions = {}): Prom
     outputFile,
     outputDir,
     windowDays,
+    totalErrors,
+    exitReason,
   };
 }
