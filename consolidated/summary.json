@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-10-01T21:52:24.869Z",
+  "total_records": 112710,
+  "unique_primary_keys": 112710,
+  "entity_type_counts": {
+    "company": 86900,
+    "person": 25810
+  },
+  "sources": [
+    {
+      "source_dir": "data_in_progress/ecommerce/cartinsight",
+      "records": 24450,
+      "written": 24439,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "data_in_progress/investors/openvc",
+      "records": 10387,
+      "written": 10387,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "data_in_progress/real_estate/sec_real_estate_companies",
+      "records": 1407,
+      "written": 1407,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/finance/fdic",
+      "records": 4337,
+      "written": 4337,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/finance/ncua",
+      "records": 4419,
+      "written": 4419,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/investors/capboard",
+      "records": 1421,
+      "written": 1421,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/investors/vcsheet",
+      "records": 930,
+      "written": 926,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/real_estate/all_property_management",
+      "records": 2737,
+      "written": 2737,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/real_estate/icsc",
+      "records": 10293,
+      "written": 10293,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/real_estate/nyc-dob-bis",
+      "records": 41901,
+      "written": 41555,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    },
+    {
+      "source_dir": "final_data/tech_founders/yc",
+      "records": 10789,
+      "written": 10789,
+      "skipped_malformed": 0,
+      "skipped_no_primary_key": 0
+    }
+  ],
+  "notes": "Excludes template/ example data and jobs/hiring_cafe (its ~178k rows live only in the ds_hiring_cafe Supabase table, not as committed files)."
+}

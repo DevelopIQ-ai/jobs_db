@@ -16,6 +16,7 @@ Formerly `scrappypuffle` — renamed to match the dataset it primarily maintains
 ├── data_in_progress/    # In-development scrapers (<industry>/<source>/)
 │   └── jobs/hiring_cafe/      # The active hiring.cafe scraper + loader
 ├── final_data/          # Approved, production scrapers (moved by a human after review)
+├── consolidated/        # Merged dataset of all committed sources (see consolidated/README.md)
 ├── ui/                  # Small dashboard for browsing scraped entities
 └── datasets_to_scrape.md
 ```
