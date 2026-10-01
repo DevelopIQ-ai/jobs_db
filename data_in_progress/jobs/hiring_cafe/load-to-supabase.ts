@@ -4,15 +4,47 @@ import * as readline from 'readline';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const INPUT_FILE = '/Users/evanbrooks/Desktop/scrappypuffle/data_in_progress/jobs/hiring_cafe/output/us-jobs-final.jsonl';
+const INPUT_FILE = process.argv[2] || `${__dirname}/output/leads.jsonl`;
 const BATCH_SIZE = 500;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function transformRecord(job: any) {
+// Rows loaded before the collapse_key keying was adopted carry primary_key =
+// job_id, so upserts on primary_key miss them and would duplicate. Upsert
+// first (existing rows stay intact if the load fails), then delete only the
+// legacy-format rows: collapse_key matches a loaded job but primary_key does
+// not, which only the old job_id-keyed rows satisfy.
+async function loadBatch(batch: any[], offset: number): Promise<number> {
+  const keys = batch.map((row) => row.collapse_key).filter(Boolean);
+  const { error } = await supabase
+    .from('ds_hiring_cafe')
+    .upsert(batch, { onConflict: 'primary_key' });
+  if (error) {
+    console.error(`Upsert error at ${offset}:`, error.message);
+    return 1;
+  }
+  const { error: deleteError } = await supabase
+    .from('ds_hiring_cafe')
+    .delete()
+    .in('collapse_key', keys)
+    .not('primary_key', 'in', `(${keys.map((k) => `"${String(k).replace(/"/g, '\\"')}"`).join(',')})`);
+  if (deleteError) {
+    console.error(`Legacy-row cleanup error at ${offset}:`, deleteError.message);
+    return 1;
+  }
+  return 0;
+}
+
+// leads.jsonl rows follow the LeadRecord contract (core/company/contact/
+// context); ds_hiring_cafe stays flat, so unwrap context back to columns.
+// primary_key = context.collapse_key so the upsert key is the same identity
+// the contract primary_key uses (scraper fills collapse_key from job_id when
+// the site omits it).
+function transformRecord(record: any) {
+  const job = record.context || {};
   return {
-    primary_key: job.job_id,
-    scraped_at: job.scraped_at,
+    primary_key: job.collapse_key,
+    scraped_at: record.core?.scraped_at,
     collapse_key: job.collapse_key,
     source: job.source,
     apply_url: job.apply_url,
@@ -25,7 +57,7 @@ function transformRecord(job: any) {
     salary_min_yearly: job.salary_min_yearly,
     salary_max_yearly: job.salary_max_yearly,
     company_domain: job.company_domain,
-    company_name: job.company_name,
+    company_name: record.company?.company_name,
     company_industry: job.company_industry,
     company_hq_country: job.company_hq_country,
     company_employee_count: job.company_employee_count,
@@ -58,11 +90,7 @@ async function main() {
       batch.push(transformRecord(job));
 
       if (batch.length >= BATCH_SIZE) {
-        const { error } = await supabase.from('ds_hiring_cafe').insert(batch);
-        if (error) {
-          console.error(`Batch error at ${total}:`, error.message);
-          errors++;
-        }
+        errors += await loadBatch(batch, total);
         total += batch.length;
         process.stdout.write(`\rInserted: ${total.toLocaleString()}`);
         batch = [];
@@ -74,15 +102,11 @@ async function main() {
 
   // Insert remaining
   if (batch.length > 0) {
-    const { error } = await supabase.from('ds_hiring_cafe').insert(batch);
-    if (error) {
-      console.error(`Final batch error:`, error.message);
-      errors++;
-    }
+    errors += await loadBatch(batch, total);
     total += batch.length;
   }
 
-  console.log(`\n\nComplete! Inserted ${total.toLocaleString()} jobs with ${errors} errors.`);
+  console.log(`\n\nComplete! Loaded ${total.toLocaleString()} jobs with ${errors} errors.`);
 }
 
 main().catch(console.error);
