@@ -11,11 +11,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // leads.jsonl rows follow the LeadRecord contract (core/company/contact/
 // context); ds_hiring_cafe stays flat, so unwrap context back to columns.
-// primary_key keeps using context.job_id so upserts match existing rows.
+// primary_key = context.collapse_key so the upsert key is the same identity
+// the contract primary_key uses (scraper fills collapse_key from job_id when
+// the site omits it).
 function transformRecord(record: any) {
   const job = record.context || {};
   return {
-    primary_key: job.job_id,
+    primary_key: job.collapse_key,
     scraped_at: record.core?.scraped_at,
     collapse_key: job.collapse_key,
     source: job.source,

@@ -349,7 +349,9 @@ async function main() {
       promoteCompleted();
       updateDataAsOf(SCRAPER_DIR);
       writeReviewSample();
-      totalNew = seen.size;
+      // `seen` holds both job_id and collapse_key per row, so count the
+      // promoted file's lines for accurate run.json numbers
+      totalNew = fs.readFileSync(paths.leadsFile, "utf-8").split("\n").filter(l => l.trim()).length;
     }
 
     if ((FRESH || sweepComplete) && !recovered) {
