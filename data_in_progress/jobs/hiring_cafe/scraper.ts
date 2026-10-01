@@ -105,8 +105,10 @@ function transformJob(job: any, scrapedAt: string): Record<string, unknown> | nu
     },
     contact: {},
     context: {
-      job_id: job.id,
-      collapse_key: job.collapse_key,
+      // either field uniquely identifies the record; fill both so the
+      // contract key and the loader's upsert key can never be undefined
+      job_id: job.id || job.collapse_key,
+      collapse_key: job.collapse_key || job.id,
       source: job.source,
       apply_url: job.apply_url,
       title: info.title || processed.core_job_title || "",
@@ -325,9 +327,12 @@ async function main() {
     const sweepComplete = startIdx >= slice.length;
     const inprogressHasRows = fs.existsSync(INPROGRESS_FILE) && fs.statSync(INPROGRESS_FILE).size > 0;
 
+    let recovered = false;
     if (sweepComplete && inprogressHasRows && !FRESH) {
       // crashed between the last checkpoint and promotion — finish the
-      // pending work (retry leftovers, then promote) before starting fresh
+      // pending work (retry leftovers, then promote) and end the run;
+      // the next launch starts the fresh sweep
+      recovered = true;
       console.log("Recovering unpromoted sweep…");
       if (failed.size > 0) {
         const browser = await chromium.launch({ headless: false });
@@ -344,9 +349,10 @@ async function main() {
       promoteCompleted();
       updateDataAsOf(SCRAPER_DIR);
       writeReviewSample();
+      totalNew = seen.size;
     }
 
-    if (FRESH || sweepComplete) {
+    if ((FRESH || sweepComplete) && !recovered) {
       // a completed (or forced-fresh) sweep starts over; the previous snapshot
       // stays at leads.jsonl until this one is promoted at completion.
       // never delete collected rows — archive any leftovers instead
@@ -360,39 +366,41 @@ async function main() {
       seen.clear(); startIdx = 0; failed.clear();
       totalNew = 0; totalHits = 0; totalSkipped = 0;
       console.log(sweepComplete ? "Previous sweep complete — starting fresh" : "Fresh start (--fresh)");
-    } else if (startIdx > 0) {
+    } else if (startIdx > 0 && !recovered) {
       console.log(`Resuming at industry #${startIdx}`);
     }
 
-    const browser = await chromium.launch({ headless: false });
+    if (!recovered) {
+      const browser = await chromium.launch({ headless: false });
 
-    for (let i = startIdx; i < slice.length; i++) {
-      const industry = slice[i];
-      const r = await scrapeIndustry(browser, industry, INPROGRESS_FILE, seen, runStart);
-      totalNew += r.added; totalHits += r.hits; totalSkipped += r.skipped;
-      if (r.ok) failed.delete(industry); else failed.add(industry);
-      fs.writeFileSync(paths.progressFile, JSON.stringify({ nextIndustryIdx: i + 1, totalNew, totalHits, totalSkipped, ts: new Date().toISOString() }));
-      saveFailed(failed);
-      await new Promise(r2 => setTimeout(r2, DELAY_MS));
-    }
-
-    // automatic retry pass for challenged/errored industries
-    if (failed.size > 0) {
-      console.log(`\nRetrying ${failed.size} failed industries…`);
-      for (const name of [...failed]) {
-        const r = await scrapeIndustry(browser, name, INPROGRESS_FILE, seen, runStart);
+      for (let i = startIdx; i < slice.length; i++) {
+        const industry = slice[i];
+        const r = await scrapeIndustry(browser, industry, INPROGRESS_FILE, seen, runStart);
         totalNew += r.added; totalHits += r.hits; totalSkipped += r.skipped;
-        if (r.ok) failed.delete(name);
+        if (r.ok) failed.delete(industry); else failed.add(industry);
+        fs.writeFileSync(paths.progressFile, JSON.stringify({ nextIndustryIdx: i + 1, totalNew, totalHits, totalSkipped, ts: new Date().toISOString() }));
         saveFailed(failed);
         await new Promise(r2 => setTimeout(r2, DELAY_MS));
       }
-      console.log(`Retry pass done — ${failed.size} still failing`);
-    }
 
-    await browser.close();
-    promoteCompleted();
-    updateDataAsOf(SCRAPER_DIR);
-    writeReviewSample();
+      // automatic retry pass for challenged/errored industries
+      if (failed.size > 0) {
+        console.log(`\nRetrying ${failed.size} failed industries…`);
+        for (const name of [...failed]) {
+          const r = await scrapeIndustry(browser, name, INPROGRESS_FILE, seen, runStart);
+          totalNew += r.added; totalHits += r.hits; totalSkipped += r.skipped;
+          if (r.ok) failed.delete(name);
+          saveFailed(failed);
+          await new Promise(r2 => setTimeout(r2, DELAY_MS));
+        }
+        console.log(`Retry pass done — ${failed.size} still failing`);
+      }
+
+      await browser.close();
+      promoteCompleted();
+      updateDataAsOf(SCRAPER_DIR);
+      writeReviewSample();
+    }
   }
 
   const stillFailing = readJson(FAILED_FILE, { industries: [] as string[] }).industries || [];
