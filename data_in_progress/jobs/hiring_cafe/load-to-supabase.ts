@@ -9,10 +9,14 @@ const BATCH_SIZE = 500;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function transformRecord(job: any) {
+// leads.jsonl rows follow the LeadRecord contract (core/company/contact/
+// context); ds_hiring_cafe stays flat, so unwrap context back to columns.
+// primary_key keeps using context.job_id so upserts match existing rows.
+function transformRecord(record: any) {
+  const job = record.context || {};
   return {
     primary_key: job.job_id,
-    scraped_at: job.scraped_at,
+    scraped_at: record.core?.scraped_at,
     collapse_key: job.collapse_key,
     source: job.source,
     apply_url: job.apply_url,
@@ -25,7 +29,7 @@ function transformRecord(job: any) {
     salary_min_yearly: job.salary_min_yearly,
     salary_max_yearly: job.salary_max_yearly,
     company_domain: job.company_domain,
-    company_name: job.company_name,
+    company_name: record.company?.company_name,
     company_industry: job.company_industry,
     company_hq_country: job.company_hq_country,
     company_employee_count: job.company_employee_count,

@@ -1,22 +1,17 @@
-source_id: "jobs/hiring_cafe"
-display_name: "Hiring Cafe US Jobs (SSR)"
-entity_type: "company"
-data_as_of: "2026-09-30"
-start_urls:
+"source_id": "jobs/hiring_cafe"
+"display_name": "Hiring Cafe US Jobs (SSR)"
+"entity_type": "company"
+"data_as_of": "2026-10-01"
+"start_urls":
   - "https://hiringcafe.com/?searchState={industries,US,last30d}"
-run_command: "npx tsx scrape-ssr.ts 1453 30"
-refresh: "weekly"
-primary_key_strategy:
-  type: "stable_id"
-  stable_id_context_path:
+"run_command": "npx tsx scraper.ts 1453 30"
+"refresh": "weekly"
+"primary_key_strategy":
+  "type": "stable_id"
+  "stable_id_context_path":
+    - "context"
     - "collapse_key"
-expected_volume_range:
-  min: 15000
-  max: 60000
-notes: >
-  Rows use the ds_hiring_cafe Supabase table schema (flat job columns), not the
-  LeadRecord contract — this is the standalone public jobs dataset, not a lead
-  package. Cloudflare blocks /api/search-jobs on datacenter IPs, so scrape-ssr.ts
-  reads __NEXT_DATA__.ssrHits from public search pages with a fresh Playwright
-  context per industry (~40-140 jobs/industry, ~20% challenged). Load to
-  Supabase is a separate owner-run ops step (load-to-supabase.ts).
+"expected_volume_range":
+  "min": 15000
+  "max": 60000
+"notes": "Cloudflare blocks /api/search-jobs on datacenter IPs, so scraper.ts reads __NEXT_DATA__.ssrHits from public search pages with a fresh Playwright context per industry (~40-140 jobs/industry, ~20% challenged). Rows are contract records; job fields live in context, the hiring company in company. The loader (load-to-supabase.ts) maps context back to the flat ds_hiring_cafe table columns and is a separate owner-run ops step — agents must not run it.\n"
