@@ -24,6 +24,7 @@ import { chromium, type Browser } from "playwright";
 import Tesseract from "tesseract.js";
 import sharp from "sharp";
 import { AgentMailClient } from "agentmail";
+import { randomBytes } from "crypto";
 import {
   loadSourceConfig,
   updateDataAsOf,
@@ -37,7 +38,9 @@ import {
 
 const BASE_URL = "https://app.cartinsight.io";
 const WWW_URL = "https://www.cartinsight.io";
-const PASSWORD = "ScrapeBot#2026!";
+function generatePassword(): string {
+  return `Ct${randomBytes(8).toString("base64url")}#1!`;
+}
 const DOMAIN = "developiq.co";
 const MAX_CAPTCHA_RETRIES = 10;
 const EXPORT_CONCURRENCY = 5;
@@ -245,6 +248,7 @@ async function createAccount(browser: Browser): Promise<Account | null> {
     const inbox = await agentmail.inboxes.create({ domain: DOMAIN });
     const email = inbox.inboxId;
     const userName = email.split("@")[0];
+    const password = generatePassword();
     console.log(`  Inbox: ${email}`);
 
     for (let attempt = 0; attempt < MAX_CAPTCHA_RETRIES; attempt++) {
@@ -270,7 +274,7 @@ async function createAccount(browser: Browser): Promise<Account | null> {
 
       await page.fill('input[name="user_name"]', userName);
       await page.fill('input[name="emailaddress"]', email);
-      await page.fill('input[name="password"]', PASSWORD);
+      await page.fill('input[name="password"]', password);
       await page.fill('input[name="user_captcha_code"]', captchaText);
 
       const [response] = await Promise.all([
@@ -301,7 +305,7 @@ async function createAccount(browser: Browser): Promise<Account | null> {
 
           console.log(`  Account ready!`);
           await context.close();
-          return { email, password: PASSWORD, creditsUsed: 0, creditsTotal: 100, createdAt: new Date().toISOString() };
+          return { email, password, creditsUsed: 0, creditsTotal: 100, createdAt: new Date().toISOString() };
         } else {
           const msg = json.msg || JSON.stringify(json);
           console.log(`  Signup failed: ${msg}`);
