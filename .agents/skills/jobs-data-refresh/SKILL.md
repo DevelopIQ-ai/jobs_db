@@ -1,11 +1,11 @@
 ---
 name: jobs-data-refresh
-description: Re-scrape hiring.cafe via the SSR scraper to refresh the "jobs data" Supabase dataset (ds_hiring_cafe), and check its freshness. Use when asked to update, reload, or refresh hiring.cafe / jobs data, or work on the scrappypuffle → Supabase jobs pipeline. The database load itself is owner-run — see the Load section.
+description: Re-scrape hiring.cafe via the SSR scraper to refresh the "jobs db" Supabase dataset (ds_hiring_cafe), and check its freshness. Use when asked to update, reload, or refresh hiring.cafe / jobs db, or work on the scrappypuffle → Supabase jobs pipeline. The database load itself is owner-run — see the Load section.
 ---
 
 # Jobs data refresh
 
-The **"jobs data" Supabase project** (`snimonofzyrbsqovpnsq`, us-west-2) is a standalone, publicly readable dataset — no app reads it. It holds exactly one data table, `ds_hiring_cafe` (~178k rows), populated by this repo's scraper at `data_in_progress/jobs/hiring_cafe/`.
+The **"jobs db" Supabase project** (`snimonofzyrbsqovpnsq`, us-west-2) is a standalone, publicly readable dataset — no app reads it. It holds exactly one data table, `ds_hiring_cafe` (~178k rows), populated by this repo's scraper at `data_in_progress/jobs/hiring_cafe/`.
 
 ## Public API (no auth needed beyond the publishable key)
 

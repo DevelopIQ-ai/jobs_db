@@ -1,7 +1,7 @@
 # jobs/hiring_cafe — Hiring Cafe US jobs (SSR)
 
 Scrapes hiring.cafe job listings into the standalone `ds_hiring_cafe` Supabase
-table (the public "jobs data" dataset).
+table (the public "jobs db" dataset).
 
 ## Why SSR
 
