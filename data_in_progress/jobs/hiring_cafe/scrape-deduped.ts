@@ -1,7 +1,7 @@
 import { chromium, Page } from 'playwright';
 import * as fs from 'fs';
 
-const OUTPUT_DIR = '/Users/evanbrooks/Desktop/scrappypuffle/data_in_progress/jobs/hiring_cafe/output';
+const OUTPUT_DIR = __dirname + '/output';
 const OUTPUT_FILE = `${OUTPUT_DIR}/us-jobs-unique.jsonl`;
 const SEEN_FILE = `${OUTPUT_DIR}/seen-collapse-keys.json`;
 const PROGRESS_FILE = `${OUTPUT_DIR}/progress-deduped.json`;

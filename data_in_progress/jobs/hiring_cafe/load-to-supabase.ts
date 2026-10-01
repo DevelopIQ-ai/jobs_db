@@ -4,7 +4,7 @@ import * as readline from 'readline';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const INPUT_FILE = '/Users/evanbrooks/Desktop/scrappypuffle/data_in_progress/jobs/hiring_cafe/output/us-jobs-final.jsonl';
+const INPUT_FILE = process.argv[2] || `${__dirname}/output/us-jobs-ssr.jsonl`;
 const BATCH_SIZE = 500;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -58,7 +58,9 @@ async function main() {
       batch.push(transformRecord(job));
 
       if (batch.length >= BATCH_SIZE) {
-        const { error } = await supabase.from('ds_hiring_cafe').insert(batch);
+        const { error } = await supabase
+          .from('ds_hiring_cafe')
+          .upsert(batch, { onConflict: 'primary_key' });
         if (error) {
           console.error(`Batch error at ${total}:`, error.message);
           errors++;
@@ -74,7 +76,9 @@ async function main() {
 
   // Insert remaining
   if (batch.length > 0) {
-    const { error } = await supabase.from('ds_hiring_cafe').insert(batch);
+    const { error } = await supabase
+      .from('ds_hiring_cafe')
+      .upsert(batch, { onConflict: 'primary_key' });
     if (error) {
       console.error(`Final batch error:`, error.message);
       errors++;
@@ -82,7 +86,7 @@ async function main() {
     total += batch.length;
   }
 
-  console.log(`\n\nComplete! Inserted ${total.toLocaleString()} jobs with ${errors} errors.`);
+  console.log(`\n\nComplete! Upserted ${total.toLocaleString()} jobs with ${errors} errors.`);
 }
 
 main().catch(console.error);
