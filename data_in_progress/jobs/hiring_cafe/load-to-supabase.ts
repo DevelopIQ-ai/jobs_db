@@ -9,6 +9,28 @@ const BATCH_SIZE = 500;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Rows loaded before the collapse_key keying was adopted carry primary_key =
+// job_id, so upserts on primary_key would miss them and duplicate. Deleting by
+// collapse_key first reconciles both key formats: any existing row for the
+// same job is replaced regardless of which identity it was keyed under.
+async function loadBatch(batch: any[], offset: number): Promise<number> {
+  const keys = batch.map((row) => row.collapse_key).filter(Boolean);
+  const { error: deleteError } = await supabase
+    .from('ds_hiring_cafe')
+    .delete()
+    .in('collapse_key', keys);
+  if (deleteError) {
+    console.error(`Delete error at ${offset}:`, deleteError.message);
+    return 1;
+  }
+  const { error } = await supabase.from('ds_hiring_cafe').insert(batch);
+  if (error) {
+    console.error(`Insert error at ${offset}:`, error.message);
+    return 1;
+  }
+  return 0;
+}
+
 // leads.jsonl rows follow the LeadRecord contract (core/company/contact/
 // context); ds_hiring_cafe stays flat, so unwrap context back to columns.
 // primary_key = context.collapse_key so the upsert key is the same identity
@@ -64,13 +86,7 @@ async function main() {
       batch.push(transformRecord(job));
 
       if (batch.length >= BATCH_SIZE) {
-        const { error } = await supabase
-          .from('ds_hiring_cafe')
-          .upsert(batch, { onConflict: 'primary_key' });
-        if (error) {
-          console.error(`Batch error at ${total}:`, error.message);
-          errors++;
-        }
+        errors += await loadBatch(batch, total);
         total += batch.length;
         process.stdout.write(`\rInserted: ${total.toLocaleString()}`);
         batch = [];
@@ -82,17 +98,11 @@ async function main() {
 
   // Insert remaining
   if (batch.length > 0) {
-    const { error } = await supabase
-      .from('ds_hiring_cafe')
-      .upsert(batch, { onConflict: 'primary_key' });
-    if (error) {
-      console.error(`Final batch error:`, error.message);
-      errors++;
-    }
+    errors += await loadBatch(batch, total);
     total += batch.length;
   }
 
-  console.log(`\n\nComplete! Upserted ${total.toLocaleString()} jobs with ${errors} errors.`);
+  console.log(`\n\nComplete! Loaded ${total.toLocaleString()} jobs with ${errors} errors.`);
 }
 
 main().catch(console.error);

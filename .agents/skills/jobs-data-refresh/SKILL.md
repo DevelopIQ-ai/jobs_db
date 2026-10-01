@@ -53,7 +53,7 @@ SUPABASE_SERVICE_ROLE_KEY=$JOBS_DATA_SUPABASE_SECRET_KEY \
 npx tsx load-to-supabase.ts [input.jsonl]   # defaults to output/leads.jsonl
 ```
 
-- Unwraps contract records back to flat `ds_hiring_cafe` columns; upserts on `primary_key` (= `context.collapse_key`) in 500-row batches — safe to rerun; existing rows get fresh `scraped_at`.
+- Unwraps contract records back to flat `ds_hiring_cafe` columns; replaces rows by `collapse_key` (delete + insert, 500-row batches) — reconciles both old job_id-keyed rows and new collapse_key-keyed ones; safe to rerun.
 - `SUPABASE_SERVICE_ROLE_KEY` = the project's `sb_secret_...` key (Devin secret `JOBS_DATA_SUPABASE_SECRET_KEY`, or dashboard → Project Settings → API Keys). Never commit it.
 
 After loading, bump the catalog: `UPDATE datasets SET record_count=..., data_as_of='today' WHERE source_id='jobs/hiring_cafe'` (SQL editor or service-key RPC).
