@@ -5,7 +5,7 @@ the public **jobs db** on Supabase (`ds_hiring_cafe`, ~178k US jobs from
 hiring.cafe).
 
 > **Split note:** lead datasets (ICSC, YC founders, CartInsight, investors, real
-> estate, finance) now live in `DevelopIQ-ai/leads_db`. This repo is the
+> estate, finance) now live in `DevelopIQ-ai/leads_db_scraped`. This repo is the
 > hiring.cafe jobs pipeline plus the shared scraper framework it runs on.
 
 ## Layout
