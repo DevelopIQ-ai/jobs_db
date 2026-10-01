@@ -30,6 +30,7 @@ async function loadBatch(batch: any[], offset: number): Promise<number> {
     .not('primary_key', 'in', `(${keys.map((k) => `"${String(k).replace(/"/g, '\\"')}"`).join(',')})`);
   if (deleteError) {
     console.error(`Legacy-row cleanup error at ${offset}:`, deleteError.message);
+    return 1;
   }
   return 0;
 }
