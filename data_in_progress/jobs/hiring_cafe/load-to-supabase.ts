@@ -10,23 +10,26 @@ const BATCH_SIZE = 500;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Rows loaded before the collapse_key keying was adopted carry primary_key =
-// job_id, so upserts on primary_key would miss them and duplicate. Deleting by
-// collapse_key first reconciles both key formats: any existing row for the
-// same job is replaced regardless of which identity it was keyed under.
+// job_id, so upserts on primary_key miss them and would duplicate. Upsert
+// first (existing rows stay intact if the load fails), then delete only the
+// legacy-format rows: collapse_key matches a loaded job but primary_key does
+// not, which only the old job_id-keyed rows satisfy.
 async function loadBatch(batch: any[], offset: number): Promise<number> {
   const keys = batch.map((row) => row.collapse_key).filter(Boolean);
+  const { error } = await supabase
+    .from('ds_hiring_cafe')
+    .upsert(batch, { onConflict: 'primary_key' });
+  if (error) {
+    console.error(`Upsert error at ${offset}:`, error.message);
+    return 1;
+  }
   const { error: deleteError } = await supabase
     .from('ds_hiring_cafe')
     .delete()
-    .in('collapse_key', keys);
+    .in('collapse_key', keys)
+    .not('primary_key', 'in', `(${keys.map((k) => `"${String(k).replace(/"/g, '\\"')}"`).join(',')})`);
   if (deleteError) {
-    console.error(`Delete error at ${offset}:`, deleteError.message);
-    return 1;
-  }
-  const { error } = await supabase.from('ds_hiring_cafe').insert(batch);
-  if (error) {
-    console.error(`Insert error at ${offset}:`, error.message);
-    return 1;
+    console.error(`Legacy-row cleanup error at ${offset}:`, deleteError.message);
   }
   return 0;
 }
