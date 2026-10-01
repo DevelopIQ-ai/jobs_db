@@ -10,7 +10,7 @@
   "type": "stable_id"
   "stable_id_context_path":
     - "context"
-    - "collapse_key"
+    - "job_id"
 "expected_volume_range":
   "min": 15000
   "max": 60000

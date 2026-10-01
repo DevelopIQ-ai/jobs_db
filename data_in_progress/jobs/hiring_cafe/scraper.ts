@@ -6,6 +6,7 @@ import {
   getOutputPaths,
   ensureOutputDir,
   generatePrimaryKey,
+  getRecordEntityType,
 } from "../../../lib/source-config";
 
 // SSR-based scraper: pulls job data from __NEXT_DATA__.props.pageProps.ssrHits
@@ -90,7 +91,7 @@ function transformJob(job: any, scrapedAt: string): Record<string, unknown> | nu
   const record: Record<string, unknown> = {
     core: {
       source_id: config.source_id,
-      entity_type: "company" as const,
+      entity_type: getRecordEntityType(config, "company"),
       scraped_at: scrapedAt,
       raw_url: job.apply_url || "",
       primary_key: "",
@@ -251,6 +252,7 @@ async function scrapeIndustry(browser: any, industry: string, targetFile: string
     let skipped = 0;
     for (const hit of d.hits) {
       const key = hit.collapse_key || hit.id;
+      if (!key) { skipped++; continue; }
       if (seen.has(key)) continue;
       const rec = transformJob(hit, scrapedAt);
       if (!rec) { skipped++; continue; }
@@ -321,10 +323,38 @@ async function main() {
     }
 
     const sweepComplete = startIdx >= slice.length;
+    const inprogressHasRows = fs.existsSync(INPROGRESS_FILE) && fs.statSync(INPROGRESS_FILE).size > 0;
+
+    if (sweepComplete && inprogressHasRows && !FRESH) {
+      // crashed between the last checkpoint and promotion — finish the
+      // pending work (retry leftovers, then promote) before starting fresh
+      console.log("Recovering unpromoted sweep…");
+      if (failed.size > 0) {
+        const browser = await chromium.launch({ headless: false });
+        console.log(`Retrying ${failed.size} failed industries…`);
+        for (const name of [...failed]) {
+          const r = await scrapeIndustry(browser, name, INPROGRESS_FILE, seen, runStart);
+          totalNew += r.added; totalHits += r.hits; totalSkipped += r.skipped;
+          if (r.ok) failed.delete(name);
+          saveFailed(failed);
+          await new Promise(r2 => setTimeout(r2, DELAY_MS));
+        }
+        await browser.close();
+      }
+      promoteCompleted();
+      updateDataAsOf(SCRAPER_DIR);
+      writeReviewSample();
+    }
+
     if (FRESH || sweepComplete) {
       // a completed (or forced-fresh) sweep starts over; the previous snapshot
-      // stays at leads.jsonl until this one is promoted at completion
-      for (const f of [INPROGRESS_FILE, paths.progressFile, FAILED_FILE]) {
+      // stays at leads.jsonl until this one is promoted at completion.
+      // never delete collected rows — archive any leftovers instead
+      fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+      if (fs.existsSync(INPROGRESS_FILE)) {
+        fs.renameSync(INPROGRESS_FILE, `${ARCHIVE_DIR}/leads-inprogress-${Date.now()}.jsonl`);
+      }
+      for (const f of [paths.progressFile, FAILED_FILE]) {
         if (fs.existsSync(f)) fs.unlinkSync(f);
       }
       seen.clear(); startIdx = 0; failed.clear();
