@@ -22,12 +22,15 @@ Cloudflare blocks `hiringcafe.com`'s `/api/search-jobs` on datacenter IPs, so th
 
 ```bash
 cd data_in_progress/jobs/hiring_cafe
-npx tsx scrape-ssr.ts [maxIndustries] [daysLookback]   # e.g. 1453 30 for a full sweep
+npx tsx scrape-ssr.ts [maxIndustries] [daysLookback] [--fresh] [--retry-failed]   # e.g. 1453 30 for a full sweep
 ```
 
 - Slices one query per industry in `industries.txt` (1,453 entries); ~10–13s each, ~4–5h for a full sweep.
-- Output: `output/us-jobs-ssr.jsonl`, progress in `output/progress-ssr.json` — **resumable**, dedupe set rebuilds from the output file on restart, safe to relaunch anytime.
-- Only page 0 per query is SSR'd (~40–140 jobs/slice) → broad-shallow coverage; ~20% of slices get challenged and skip. The ~6.1M-job deep tail is unreachable without residential IPs.
+- Output: `output/leads.jsonl` + `run.json`; progress in `output/progress-ssr.json`, failures in `output/failed-ssr.json` — **resumable**, dedupe set rebuilds from the output file on restart.
+- **Refresh semantics**: a completed sweep self-archives the old file to `leads-<epoch>.jsonl` and starts fresh on the next launch — periodic relaunches actually re-scrape. `--fresh` forces it; `--retry-failed` re-runs only challenged industries.
+- Challenged industries are tracked and retried once automatically at the end of each sweep.
+- A PID lock (`output/scrape-ssr.lock`) plus the watchdog's pgrep prevent duplicate concurrent runs.
+- Only page 0 per query is SSR'd (~40–140 jobs/slice) → broad-shallow coverage; ~20% of slices get challenged on first pass. The ~6.1M-job deep tail is unreachable without residential IPs.
 - Needs a display: headless fails. Use `xvfb-run -a` on headless boxes.
 
 For a long-running sweep with crash/reboot resilience, `run-scrape.sh` relaunches under xvfb if not already running — install it as a cron `@reboot` + periodic job:
@@ -42,12 +45,12 @@ For a long-running sweep with crash/reboot resilience, `run-scrape.sh` relaunche
 cd data_in_progress/jobs/hiring_cafe
 SUPABASE_URL=https://snimonofzyrbsqovpnsq.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=$JOBS_DATA_SUPABASE_SECRET_KEY \
-npx tsx load-to-supabase.ts [input.jsonl]   # defaults to output/us-jobs-ssr.jsonl
+npx tsx load-to-supabase.ts [input.jsonl]   # defaults to output/leads.jsonl
 ```
 
 - Upserts on `primary_key` in 500-row batches — safe to rerun; existing rows get fresh `scraped_at`.
 - `SUPABASE_SERVICE_ROLE_KEY` = the project's `sb_secret_...` key (Devin secret `JOBS_DATA_SUPABASE_SECRET_KEY`, or dashboard → Project Settings → API Keys). Never commit it.
-- AGENTS.md's "do not load data yourself" governs scraper-package promotion, not this ops refresh — the dataset owner directs loads.
+- The scraper never touches the DB. Loading is a separate ops step the dataset owner runs (or explicitly directs an agent to run) — that's the boundary AGENTS.md's "do not load data yourself" draws.
 
 After loading, bump the catalog: `UPDATE datasets SET record_count=..., data_as_of='today' WHERE source_id='jobs/hiring_cafe'` (SQL editor or service-key RPC).
 

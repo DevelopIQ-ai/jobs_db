@@ -4,7 +4,7 @@ import * as readline from 'readline';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const INPUT_FILE = process.argv[2] || `${__dirname}/output/us-jobs-ssr.jsonl`;
+const INPUT_FILE = process.argv[2] || `${__dirname}/output/leads.jsonl`;
 const BATCH_SIZE = 500;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
